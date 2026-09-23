@@ -7,7 +7,6 @@ INCLUDE _std_large
 INCLUDE header
 HELP hlp1, view("help duvm")
 RESET res1
-COPY copy1
 
 DIALOG main, label("duvm — Deaton's unit-value model") tabtitle("Main")
 BEGIN
@@ -111,10 +110,6 @@ BEGIN
 END
 
 INCLUDE ifin
-
-OK ok1, label("OK")
-CANCEL can1, label("Cancel")
-SUBMIT sub1, label("Submit")
 
 PROGRAM command
 BEGIN
