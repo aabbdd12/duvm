@@ -1,0 +1,32 @@
+# Replication of the technical note
+
+Every table of *Estimating Deaton's unit-value model: the duvm Stata module*
+is produced by one script of this folder, run from this folder:
+
+```stata
+cd replication
+do master.do
+```
+
+then, to write the LaTeX tables into `../paper/fig`:
+
+```
+python make_tables.py
+```
+
+The data are `../examples/Mexico_2014_Cereals.dta`, the module `../src`. The
+scripts write CSV files into `out/`. `global BOOT 0` before `do master.do`
+reduces the two bootstrap scripts from 400 to 40 replications.
+
+| script | table of the note |
+|---|---|
+| `Table1_2_data_quality.do` | Table 1 (the data behind each good), Table 2 (first-stage parameters, quality) |
+| `Table3_4_elasticities.do` | Table 3 (price elasticities with linearized SE), Table 4 (the four treatments) |
+| `Table5_variance_validation.do` | Table 5 (linearized against bootstrap SE: SRS, weights, survey design) |
+| `Table6_shortcut.do` | Table 6 (bootstrap of both stages against Deaton's shortcut) |
+| `Table7_deciles.do` | Table 7 (own-price elasticities by quintile; the decile run is kept in `out/table7_deciles10.csv`) |
+| `Table8_timing.do` | Table 8 (execution times; the WELCOM rows need the WELCOM files, otherwise they stay missing) |
+| `TableA1_corrections.do` | Table A1 (from the WELCOM formulas to the book, one correction at a time) |
+| `TableA2_compat_lock.do` | Table A2 (`duvm, compat` against the frozen WELCOM output; needs `tests/lock`, otherwise skipped) |
+
+`_setup.do` holds the common preamble (paths, the model, a CSV writer).

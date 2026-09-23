@@ -1,0 +1,12 @@
+tests/out/
+tests/_*.do
+tests/*.log
+audit/*.log
+replication/_run*.do
+replication/*.log
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/_*.log
+*.log
+!tests/lock/

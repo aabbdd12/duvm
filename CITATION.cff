@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: "If you use duvm, please cite it as below."
+title: "Estimating Deaton's unit-value model: the duvm Stata module"
+type: software
+authors:
+  - family-names: Araar
+    given-names: Abdelkrim
+    affiliation: "Université Laval / PEP"
+    email: aabd@ecn.ulaval.ca
+version: "1.0.0"
+date-released: "2026-09-23"
+repository-code: "https://github.com/aabbdd12/duvm"
+keywords:
+  - demand systems
+  - unit values
+  - quality shading
+  - price elasticities
+  - household surveys
+  - survey design
+  - Stata
+license: "GPL-3.0-or-later"
+references:
+  - type: article
+    title: "Quality, quantity, and spatial variation of price"
+    authors:
+      - family-names: Deaton
+        given-names: Angus
+    journal: "American Economic Review"
+    volume: 78
+    year: 1988
+    start: 418
+    end: 430
+  - type: book
+    title: "The Analysis of Household Surveys: A Microeconometric Approach to Development Policy"
+    authors:
+      - family-names: Deaton
+        given-names: Angus
+    publisher: "Johns Hopkins University Press for the World Bank"
+    year: 1997

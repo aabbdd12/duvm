@@ -1,0 +1,171 @@
+/*
+    duvm.dlg  —  dialog for duvm 1.0 (Deaton's unit-value model)
+    db duvm
+*/
+VERSION 14.0
+INCLUDE _std_large
+DEFINE _dlght 400
+INCLUDE header
+HELP hlp1, view("help duvm")
+RESET res1
+COPY copy1
+
+DIALOG main, label("duvm — Deaton's unit-value model") tabtitle("Main")
+BEGIN
+  GROUPBOX gb_goods    10   10  640  75, label("Goods")
+  TEXT     tx_goods    20   30  600   ., label("Item names (the data hold w<item> and luv<item> for each):")
+  EDIT     ed_goods    20   50  600   ., label("goods")
+
+  GROUPBOX gb_vars     10   95  310 140, label("Required variables")
+  TEXT     tx_hhsize   20  115  140   ., label("Household size:")
+  VARNAME  vn_hhsize  165  115  150   ., label("hhsize") option(hhsize)
+  TEXT     tx_expend   20  145  140   ., label("Total expenditure:")
+  VARNAME  vn_expend  165  145  150   ., label("expend") option(expend)
+  TEXT     tx_cluster  20  175  140   ., label("Cluster (prices constant):")
+  VARNAME  vn_cluster 165  175  150   ., label("cluster") option(cluster)
+  TEXT     tx_region   20  205  140   ., label("Region (optional):")
+  VARNAME  vn_region  165  205  150   ., label("region") option(region)
+
+  GROUPBOX gb_x       340   95  310 140, label("Household characteristics")
+  TEXT     tx_indcat  350  115  290   ., label("Categorical (entered as dummies):")
+  VARLIST  vl_indcat  350  135  290   ., label("indcat") option(indcat)
+  TEXT     tx_indcon  350  165  290   ., label("Continuous:")
+  VARLIST  vl_indcon  350  185  290   ., label("indcon") option(indcon)
+  TEXT     tx_sub     350  210   90   ., label("Survey round:")
+  VARNAME  vn_sub     445  210  195   ., label("subround") option(subround)
+
+  GROUPBOX gb_w        10  245  640  60, label("Weights")
+  TEXT     tx_wtype    20  265   60   ., label("Type:")
+  COMBOBOX cb_wtype    80  265  110   ., dropdownlist contents(wtypes) values(wvals) default(aweight)
+  TEXT     tx_wvar    210  265   60   ., label("Variable:")
+  VARNAME  vn_wvar    275  265  200   ., label("weight")
+END
+
+LIST wtypes
+BEGIN
+  (none)
+  aweight
+  pweight
+  fweight
+  iweight
+END
+LIST wvals
+BEGIN
+  none
+  aweight
+  pweight
+  fweight
+  iweight
+END
+
+DIALOG opts, tabtitle("Model options")
+BEGIN
+  GROUPBOX gb_q        10   10  640  95, label("Quality and symmetry")
+  TEXT     tx_qother   20   30  400   ., label("Quality elasticity assumed for the composite of all other goods:")
+  EDIT     ed_qother  430   30   80   ., label("qother") default(0.25) option(qother) numonly
+  CHECKBOX ck_nosym    20   60  400   ., label("Do not impose the (approximate) Slutsky symmetry") option(nosymmetry)
+  CHECKBOX ck_csb      20   80  600   ., label("Selection correction: inverse Mills ratio of a probit of purchase in the share equations") option(csb(1))
+
+  GROUPBOX gb_r        10  115  640  95, label("Reporting")
+  TEXT     tx_hgroup   20  135  260   ., label("Re-estimate within the groups of:")
+  VARNAME  vn_hgroup  290  135  200   ., label("hgroup") option(hgroup)
+  TEXT     tx_dec      20  165  260   ., label("Decimals displayed:")
+  SPINNER  sp_dec     290  165   60   ., label("dec") min(0) max(8) default(3) option(dec)
+  CHECKBOX ck_dreg     20  185  400   ., label("Display the first-stage regressions") option(dregres(1))
+
+  GROUPBOX gb_c        10  220  640  50, label("Compatibility")
+  CHECKBOX ck_compat   20  240  600   ., label("Reproduce the formulas of the WELCOM version (compat)") option(compat)
+END
+
+DIALOG se, tabtitle("SE/Robust")
+BEGIN
+  GROUPBOX gb_v        10   10  640 160, label("Variance estimator")
+  RADIO    rb_cluster  20   30  400   ., first label("Linearized, clustered by the price cluster (default)") onclickon(script se_off)
+  RADIO    rb_svy      20   50  400   ., label("Linearized, survey design from svyset") onclickon(script se_off)
+  RADIO    rb_boot     20   70  400   ., label("Design bootstrap of both stages") onclickon(script se_on)
+  RADIO    rb_none     20   90  400   ., last label("None") onclickon(script se_off)
+  TEXT     tx_reps     40  115  140   ., label("Replications:")
+  EDIT     ed_reps    185  115   80   ., label("reps") default(200) numonly
+  TEXT     tx_seed    290  115   60   ., label("Seed:")
+  EDIT     ed_seed    350  115   80   ., label("seed") numonly
+  CHECKBOX ck_bsvy     40  140  260   ., label("Strata and PSUs from svyset")
+  CHECKBOX ck_short   310  140  300   ., label("Deaton's shortcut (second stage only)")
+END
+
+SCRIPT se_on
+BEGIN
+  se.tx_reps.enable
+  se.ed_reps.enable
+  se.tx_seed.enable
+  se.ed_seed.enable
+  se.ck_bsvy.enable
+  se.ck_short.enable
+END
+SCRIPT se_off
+BEGIN
+  se.tx_reps.disable
+  se.ed_reps.disable
+  se.tx_seed.disable
+  se.ed_seed.disable
+  se.ck_bsvy.disable
+  se.ck_short.disable
+END
+
+INCLUDE ifin
+
+OK ok1, label("OK")
+CANCEL can1, label("Cancel")
+SUBMIT sub1, label("Submit")
+
+PROGRAM command
+BEGIN
+  put "duvm "
+  require main.ed_goods
+  put main.ed_goods
+  put " " /program ifin_output
+  if main.cb_wtype.isneq("none") & main.vn_wvar {
+    put " [" main.cb_wtype "=" main.vn_wvar "]"
+  }
+  beginoptions
+    require main.vn_hhsize
+    optionarg main.vn_hhsize
+    require main.vn_expend
+    optionarg main.vn_expend
+    require main.vn_cluster
+    optionarg main.vn_cluster
+    optionarg main.vn_region
+    optionarg main.vn_sub
+    optionarg main.vl_indcat
+    optionarg main.vl_indcon
+    if !opts.ed_qother.isdefault() {
+      optionarg opts.ed_qother
+    }
+    option opts.ck_nosym
+    option opts.ck_csb
+    optionarg opts.vn_hgroup
+    if !opts.sp_dec.isdefault() {
+      optionarg opts.sp_dec
+    }
+    option opts.ck_dreg
+    option opts.ck_compat
+    if se.rb_svy {
+      put " vce(svy)"
+    }
+    if se.rb_none {
+      put " vce(none)"
+    }
+    if se.rb_boot {
+      put " vce(bootstrap, reps(" se.ed_reps ")"
+      if se.ed_seed {
+        put " seed(" se.ed_seed ")"
+      }
+      if se.ck_bsvy {
+        put " svy"
+      }
+      if se.ck_short {
+        put " shortcut"
+      }
+      put ")"
+    }
+  endoptions
+END
