@@ -193,9 +193,15 @@ is 1 - {it:b1} + {it:b0}/{it:wbar}; the second stage estimates
 Quality shading links the two through the parameter zeta of eq. (5.92),
 zeta = {it:b1} / [{it:b0} + {it:wbar}(1 - {it:b1})], so that Psi = [I - D(zeta)B' + D(zeta)D(wbar)]^-1,
 Theta = B'Psi and the price elasticities of quantity are E = [D(wbar)^-1 B' - I]Psi.
-The tables report E without the quality correction (D(wbar)^-1 B' - I), with
-it, and with the symmetry restriction; the last row and column of the completed
-tables are the composite of all other goods.
+The tables follow the order of the WELCOM version: 1 budget shares, 2
+expenditure elasticities, 3 quality elasticities, 4 E with the unit values
+taken as prices (no quality correction), 5-6 the quality-corrected M x M
+system, unrestricted and symmetry restricted, 7-8 the completed system,
+unrestricted and symmetry restricted (8 is the final matrix), 9 the standard
+errors of Table 8, 10 the own-price elasticities by group. The last row and
+column of the completed tables are the composite of all other goods. (The
+WELCOM titles called its Tables 04-05 "without quality correction"; they were
+quality corrected, and differed from 06-07 by the completion of the system.)
 
 {pstd}
 {ul:Cluster sizes.} The measurement-error correction divides the residual

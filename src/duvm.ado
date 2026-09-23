@@ -361,35 +361,62 @@ program define _duvm_display
         di as txt "Std. err.: " as res "`bs')"
     }
 
+    * the tables follow the order of the WELCOM version (01-09); their titles
+    * say what each one holds (WELCOM's 04-05 are quality corrected too: what
+    * distinguishes them from 06-07 is the completion of the system)
+    local sym = ("`e(symmetry)'" == "approx")
     tempname T
+    matrix `T' = e(shares_mean) * 100
+    matrix rownames `T' = "Share (%)"
+    matrix colnames `T' = `goods'
+    matlist `T', border(rows) format(`fmt') twidth(14) left(2) title("Table 1: Average budget shares (in %)")
+
     if `hasV' {
-        matrix `T' = e(shares_mean) * 100 \ e(elast_exp) \ e(se_elast_exp) \ e(elast_qual) \ e(se_elast_qual)
-        matrix rownames `T' = "Budget share (%)" "Expenditure elast." "  std. err." "Quality elast." "  std. err."
+        matrix `T' = e(elast_exp) \ e(se_elast_exp)
+        matrix rownames `T' = "Elasticity" "  std. err."
     }
     else {
-        matrix `T' = e(shares_mean) * 100 \ e(elast_exp) \ e(elast_qual)
-        matrix rownames `T' = "Budget share (%)" "Expenditure elast." "Quality elast."
+        matrix `T' = e(elast_exp)
+        matrix rownames `T' = "Elasticity"
     }
     matrix colnames `T' = `goods'
-    matlist `T', border(rows) format(`fmt') twidth(20) left(2) title("Table 1: Average budget shares, expenditure and quality elasticities")
+    matlist `T', border(rows) format(`fmt') twidth(14) left(2) title("Table 2: Expenditure elasticities of quantity, e = 1 - b1 + b0/wbar")
 
-    di _n as txt "Table 2: Price elasticities of quantity, no quality correction (E = D(w)^-1 B' - I)"
+    if `hasV' {
+        matrix `T' = e(elast_qual) \ e(se_elast_qual)
+        matrix rownames `T' = "Elasticity" "  std. err."
+    }
+    else {
+        matrix `T' = e(elast_qual)
+        matrix rownames `T' = "Elasticity"
+    }
+    matrix colnames `T' = `goods'
+    matlist `T', border(rows) format(`fmt') twidth(14) left(2) title("Table 3: Quality elasticities, b1 = dln(unit value)/dln(expenditure)")
+
+    di _n as txt "Table 4: Price elasticities of quantity, unit values taken as prices (no quality correction), unrestricted"
     matlist e(elast_price_noqual), border(rows) format(`fmt') twidth(10) left(2)
-    di _n as txt "Table 3: Price elasticities of quantity, quality corrected, unrestricted B"
+    di _n as txt "Table 5: Price elasticities of quantity, quality corrected, unrestricted, M x M system"
+    matlist e(elast_price_M_ns), border(rows) format(`fmt') twidth(10) left(2)
+    if `sym' {
+        di _n as txt "Table 6: Price elasticities of quantity, quality corrected, symmetry restricted, M x M system"
+        matlist e(elast_price_M), border(rows) format(`fmt') twidth(10) left(2)
+    }
+    di _n as txt "Table 7: Price elasticities of quantity, quality corrected, unrestricted, completed system"
     matlist e(elast_price_ns), border(rows) format(`fmt') twidth(10) left(2)
-    if "`e(symmetry)'" == "approx" {
-        di _n as txt "Table 4: Price elasticities of quantity, quality corrected, symmetry restricted (completed system)"
+    if `sym' {
+        di _n as txt "Table 8: Price elasticities of quantity, quality corrected, symmetry restricted, completed system"
         matlist e(elast_price), border(rows) format(`fmt') twidth(10) left(2)
     }
     if `hasV' {
-        di _n as txt "Table 5: Standard errors of the price elasticities of Table " cond("`e(symmetry)'" == "approx", "4", "3")
+        di _n as txt "Table 9: Standard errors of the price elasticities of Table " cond(`sym', "8", "7") " (`e(vcetype)')"
         matlist e(se_elast_price), border(rows) format(`fmt') twidth(10) left(2)
     }
     if "`e(hgroup)'" != "" {
-        di _n as txt "Table 6: Own-price elasticities by `e(hgroup)' (model re-estimated within each group)"
+        di _n as txt "Table 10: Own-price elasticities by `e(hgroup)' (the model re-estimated within each group; method of Table " cond(`sym', "8", "7") ")"
         matlist e(elast_price_own_group), border(rows) format(`fmt') twidth(14) left(2)
     }
-    di as txt _n "Rows: quantity of the good; columns: price of the good. The last row/column is the composite of all other goods."
+    di as txt _n "Rows: quantity of the good; columns: price of the good. In the completed system the last row and"
+    di as txt "column are the composite of all other goods. Tables 5-8 use the quality parameter of Deaton (1997, eq. 5.92)."
 end
 
 * ============================================================================
