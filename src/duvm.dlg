@@ -4,6 +4,8 @@
 */
 VERSION 14.0
 INCLUDE _std_large
+DEFINE _dlgwd 700
+DEFINE _dlght 330
 INCLUDE header
 HELP hlp1, view("help duvm")
 RESET res1
