@@ -4,7 +4,6 @@
 */
 VERSION 14.0
 INCLUDE _std_large
-DEFINE _dlght 400
 INCLUDE header
 HELP hlp1, view("help duvm")
 RESET res1
@@ -64,14 +63,14 @@ BEGIN
   TEXT     tx_qother   20   30  400   ., label("Quality elasticity assumed for the composite of all other goods:")
   EDIT     ed_qother  430   30   80   ., label("qother") default(0.25) option(qother) numonly
   CHECKBOX ck_nosym    20   60  400   ., label("Do not impose the (approximate) Slutsky symmetry") option(nosymmetry)
-  CHECKBOX ck_csb      20   80  600   ., label("Selection correction: inverse Mills ratio of a probit of purchase in the share equations") option(csb(1))
+  CHECKBOX ck_csb      20   80  600   ., label("Selection correction: inverse Mills ratio of a probit of purchase in the share equations")
 
   GROUPBOX gb_r        10  115  640  95, label("Reporting")
   TEXT     tx_hgroup   20  135  260   ., label("Re-estimate within the groups of:")
   VARNAME  vn_hgroup  290  135  200   ., label("hgroup") option(hgroup)
   TEXT     tx_dec      20  165  260   ., label("Decimals displayed:")
   SPINNER  sp_dec     290  165   60   ., label("dec") min(0) max(8) default(3) option(dec)
-  CHECKBOX ck_dreg     20  185  400   ., label("Display the first-stage regressions") option(dregres(1))
+  CHECKBOX ck_dreg     20  185  400   ., label("Display the first-stage regressions")
 
   GROUPBOX gb_c        10  220  640  50, label("Compatibility")
   CHECKBOX ck_compat   20  240  600   ., label("Reproduce the formulas of the WELCOM version (compat)") option(compat)
@@ -141,12 +140,16 @@ BEGIN
       optionarg opts.ed_qother
     }
     option opts.ck_nosym
-    option opts.ck_csb
+    if opts.ck_csb {
+      put " csb(1)"
+    }
     optionarg opts.vn_hgroup
     if !opts.sp_dec.isdefault() {
       optionarg opts.sp_dec
     }
-    option opts.ck_dreg
+    if opts.ck_dreg {
+      put " dregres(1)"
+    }
     option opts.ck_compat
     if se.rb_svy {
       put " vce(svy)"
