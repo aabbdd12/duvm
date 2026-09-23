@@ -147,6 +147,13 @@ program define _duvm_estat_elast, rclass
     if "`noquality'" != "" {
         di as txt _n "Price elasticities of quantity, no quality correction, unrestricted B (M x M)"
         matlist e(elast_price_noqual), border(rows) format(`fmt') twidth(10) left(2)
+        if "`e(vce)'" != "none" {
+            di as txt _n "Standard errors (`e(vcetype)')"
+            matlist e(se_elast_price_noqual), border(rows) format(`fmt') twidth(10) left(2)
+            tempname _r_se
+            matrix `_r_se' = e(se_elast_price_noqual)
+            return matrix se = `_r_se'
+        }
         tempname _r_elast
         matrix `_r_elast' = e(elast_price_noqual)
         return matrix elast = `_r_elast'
@@ -155,6 +162,13 @@ program define _duvm_estat_elast, rclass
     if "`unrestricted'" != "" & "`uncompleted'" != "" {
         di as txt _n "Price elasticities of quantity, quality corrected, unrestricted B (M x M)"
         matlist e(elast_price_M_ns), border(rows) format(`fmt') twidth(10) left(2)
+        if "`e(vce)'" != "none" {
+            di as txt _n "Standard errors (`e(vcetype)')"
+            matlist e(se_elast_price_M_ns), border(rows) format(`fmt') twidth(10) left(2)
+            tempname _r_se
+            matrix `_r_se' = e(se_elast_price_M_ns)
+            return matrix se = `_r_se'
+        }
         tempname _r_elast
         matrix `_r_elast' = e(elast_price_M_ns)
         return matrix elast = `_r_elast'
@@ -163,6 +177,13 @@ program define _duvm_estat_elast, rclass
     if "`unrestricted'" != "" {
         di as txt _n "Price elasticities of quantity, quality corrected, unrestricted B, completed system"
         matlist e(elast_price_ns), border(rows) format(`fmt') twidth(10) left(2)
+        if "`e(vce)'" != "none" {
+            di as txt _n "Standard errors (`e(vcetype)')"
+            matlist e(se_elast_price_ns), border(rows) format(`fmt') twidth(10) left(2)
+            tempname _r_se
+            matrix `_r_se' = e(se_elast_price_ns)
+            return matrix se = `_r_se'
+        }
         tempname _r_elast
         matrix `_r_elast' = e(elast_price_ns)
         return matrix elast = `_r_elast'
@@ -171,6 +192,13 @@ program define _duvm_estat_elast, rclass
     if "`uncompleted'" != "" {
         di as txt _n "Price elasticities of quantity, quality corrected, symmetry restricted (M x M)"
         matlist e(elast_price_M), border(rows) format(`fmt') twidth(10) left(2)
+        if "`e(vce)'" != "none" {
+            di as txt _n "Standard errors (`e(vcetype)')"
+            matlist e(se_elast_price_M), border(rows) format(`fmt') twidth(10) left(2)
+            tempname _r_se
+            matrix `_r_se' = e(se_elast_price_M)
+            return matrix se = `_r_se'
+        }
         tempname _r_elast
         matrix `_r_elast' = e(elast_price_M)
         return matrix elast = `_r_elast'
@@ -198,8 +226,8 @@ program define _duvm_estat_quality, rclass
     tempname T
     matrix `T' = e(b1) \ e(zeta) \ hadamard(e(zeta), e(shares_mean)) \ e(elast_exp)
     if "`e(vce)'" != "none" {
-        matrix `T' = e(b1) \ e(se_elast_qual) \ e(zeta) \ hadamard(e(zeta), e(shares_mean)) \ e(elast_exp) \ e(se_elast_exp)
-        matrix rownames `T' = "b1_quality" "  std_err" "zeta" "zeta_x_wbar" "e_expenditure" "  std_err"
+        matrix `T' = e(b1) \ e(se_elast_qual) \ e(zeta) \ e(se_zeta) \ hadamard(e(zeta), e(shares_mean)) \ e(elast_exp) \ e(se_elast_exp)
+        matrix rownames `T' = "b1_quality" "  std_err" "zeta" "  std_err" "zeta_x_wbar" "e_expenditure" "  std_err"
     }
     else matrix rownames `T' = "b1_quality" "zeta" "zeta_x_wbar" "e_expenditure"
     matrix colnames `T' = `goods'

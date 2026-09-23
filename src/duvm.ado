@@ -15,7 +15,7 @@ program define duvm, eclass
         [ REGion(varname) SUBround(varname) INDCAT(varlist) INDCON(varlist numeric) ///
           HWeight(varname numeric) CSB(integer 0) QOTHer(real 0.25) ///
           NOSYMmetry COMPAT COMPATFlags(string) VCE(string) Level(cilevel) ///
-          DEC(integer 3) DREGres(integer 0) BOOT(integer 0) HGroup(varname) ///
+          DEC(integer 3) DREGres(integer 0) BOOT(integer 0) HGroup(varname) SEall ///
           QUARD4(passthru) INISave(passthru) XFIL(passthru) GMODifier(passthru) noTABle ]
 
     * ---- goods and their variables ----
@@ -291,7 +291,7 @@ program define duvm, eclass
         ereturn matrix elast_price_own_group = `G'
         ereturn local hgroup "`hgroup'"
     }
-    if "`table'" == "" _duvm_display, dec(`dec')
+    if "`table'" == "" _duvm_display, dec(`dec') `seall'
 end
 
 * ============================================================================
@@ -331,7 +331,7 @@ end
 
 * ============================================================================
 program define _duvm_display
-    syntax [, DEC(integer 3)]
+    syntax [, DEC(integer 3) SEall]
     if `dec' < 0 local dec = e(dec)
     local M = e(M)
     local cw = `dec' + 5
@@ -366,8 +366,14 @@ program define _duvm_display
     * distinguishes them from 06-07 is the completion of the system)
     local sym = ("`e(symmetry)'" == "approx")
     tempname T
-    matrix `T' = e(shares_mean) * 100
-    matrix rownames `T' = "Share (%)"
+    if `hasV' {
+        matrix `T' = e(shares_mean) * 100 \ e(se_shares_mean) * 100
+        matrix rownames `T' = "Share (%)" "  std. err."
+    }
+    else {
+        matrix `T' = e(shares_mean) * 100
+        matrix rownames `T' = "Share (%)"
+    }
     matrix colnames `T' = `goods'
     matlist `T', border(rows) format(`fmt') twidth(14) left(2) title("Table 1: Average budget shares (in %)")
 
@@ -395,14 +401,30 @@ program define _duvm_display
 
     di _n as txt "Table 4: Price elasticities of quantity, unit values taken as prices (no quality correction), unrestricted"
     matlist e(elast_price_noqual), border(rows) format(`fmt') twidth(10) left(2)
+    if `hasV' & "`seall'" != "" {
+        di as txt "         standard errors (`e(vcetype)')"
+        matlist e(se_elast_price_noqual), border(rows) format(`fmt') twidth(10) left(2)
+    }
     di _n as txt "Table 5: Price elasticities of quantity, quality corrected, unrestricted, M x M system"
     matlist e(elast_price_M_ns), border(rows) format(`fmt') twidth(10) left(2)
+    if `hasV' & "`seall'" != "" {
+        di as txt "         standard errors (`e(vcetype)')"
+        matlist e(se_elast_price_M_ns), border(rows) format(`fmt') twidth(10) left(2)
+    }
     if `sym' {
         di _n as txt "Table 6: Price elasticities of quantity, quality corrected, symmetry restricted, M x M system"
         matlist e(elast_price_M), border(rows) format(`fmt') twidth(10) left(2)
+    if `hasV' & "`seall'" != "" {
+        di as txt "         standard errors (`e(vcetype)')"
+        matlist e(se_elast_price_M), border(rows) format(`fmt') twidth(10) left(2)
+    }
     }
     di _n as txt "Table 7: Price elasticities of quantity, quality corrected, unrestricted, completed system"
     matlist e(elast_price_ns), border(rows) format(`fmt') twidth(10) left(2)
+    if `hasV' & "`seall'" != "" {
+        di as txt "         standard errors (`e(vcetype)')"
+        matlist e(se_elast_price_ns), border(rows) format(`fmt') twidth(10) left(2)
+    }
     if `sym' {
         di _n as txt "Table 8: Price elasticities of quantity, quality corrected, symmetry restricted, completed system"
         matlist e(elast_price), border(rows) format(`fmt') twidth(10) left(2)
@@ -780,11 +802,9 @@ real rowvector _duvm_dtheta(struct duvm_r scalar r, real matrix dS, real matrix 
                             real colvector db1, real colvector dw)
 {
     real scalar M
-    real matrix Sf, Sfi, B, dSf, dRf, dB, Rm, Kr, Q, Qi, P, dAi, dKr, dQ, dP
-    real matrix Q2, Psi, dQ2, dPsi, Theta, dTheta, Thx, dThx, A1, A2, A1i, Psix, dA1, dA2, dPsix
-    real matrix Psixi, Bx, dBx, Dwi, dEx
-    real colvector b0, b1, w, g, dg, z, dz, vb, dvb, rh, drh, dvbR
-    real colvector wx, dwx, b1x, db1x, b0x, db0x, ex, dex, gx, dgx, zx, dzx
+    real matrix Sf, Sfi, B, dSf, dRf, dB, Rm, Kr, Q, Qi, P, dAi, dKr, dQ, dP, BR, dBR
+    real matrix dEnq, dEns, dExns, dEsy, dExsy
+    real colvector b0, b1, w, g, dg, z, dz, vb, dvb, rh, drh, dvbR, ex, dex
 
     M = r.M
     b0 = r.b0; b1 = r.b1; w = r.wbar
@@ -793,6 +813,15 @@ real rowvector _duvm_dtheta(struct duvm_r scalar r, real matrix dS, real matrix 
     dSf = (dS + dS') / 2 - diag(dome :/ r.n1)
     dRf = dR - diag(dchi :/ r.n0)
     dB  = Sfi * (dRf - dSf * B)
+    // unit values taken as prices: E = D(w)^-1 B' - I
+    dEnq = -diag(1 :/ (w:^2)) * diag(dw) * B' + diag(1 :/ w) * dB'
+    // zeta (5.92)
+    g  = b0 + w :* (1 :- b1)
+    dg = db0 + dw :* (1 :- b1) - w :* db1
+    z  = b1 :/ g
+    dz = db1 :/ g - b1 :* dg :/ (g:^2)
+    // unrestricted B: M x M system and completed system
+    _duvm_dchain(B, dB, z, dz, b0, db0, b1, db1, w, dw, r.qother, dEns, dExns, ex, dex)
     if (r.sym) {
         Rm = _duvm_Rm(M)
         Kr = I(M) # Sfi
@@ -807,28 +836,43 @@ real rowvector _duvm_dtheta(struct duvm_r scalar r, real matrix dS, real matrix 
         drh = -Rm * (db0 # w + b0 # dw)
         dvb = vec(dB)
         dvbR = dvb + dP * (rh - Rm * vb) + P * (drh - Rm * dvb)
-        B  = r.Bsym
-        dB = rowshape(dvbR, M)'
+        BR  = r.Bsym
+        dBR = rowshape(dvbR, M)'
+        _duvm_dchain(BR, dBR, z, dz, b0, db0, b1, db1, w, dw, r.qother, dEsy, dExsy, ex, dex)
     }
-    // zeta (5.92)
-    g  = b0 + w :* (1 :- b1)
-    dg = db0 + dw :* (1 :- b1) - w :* db1
-    z  = b1 :/ g
-    dz = db1 :/ g - b1 :* dg :/ (g:^2)
-    // Psi, Theta (5.90)
+    else {
+        dEsy = dEns; dExsy = dExns
+    }
+    return((vec(dEnq')', vec(dEns')', vec(dEsy')', vec(dExns')', vec(dExsy')', dex', db1', dw', dz'))
+}
+
+// differential of (5.90)-(5.91) and of the completion (5.93)-(5.97) for a given B
+void _duvm_dchain(real matrix B, real matrix dB, real colvector z, real colvector dz,
+                  real colvector b0, real colvector db0, real colvector b1, real colvector db1,
+                  real colvector w, real colvector dw, real scalar qother,
+                  real matrix dE, real matrix dEx, real colvector ex, real colvector dex)
+{
+    real scalar M
+    real matrix Q2, Psi, dQ2, dPsi, Theta, dTheta, Thx, dThx, A1, A2, A1i, Psix, dA1, dA2, dPsix
+    real matrix Psixi, Bx, dBx, Dwi
+    real colvector wx, dwx, b1x, db1x, b0x, db0x, gx, dgx, zx, dzx
+
+    M = rows(B)
     Q2  = I(M) - diag(z) * B' + diag(z) * diag(w)
     Psi = luinv(Q2)
     dQ2 = -diag(dz) * B' - diag(z) * dB' + diag(dz) * diag(w) + diag(z) * diag(dw)
     dPsi = -Psi * dQ2 * Psi
     Theta  = B' * Psi
     dTheta = dB' * Psi + B' * dPsi
-    // completion (5.93)-(5.97)
+    Dwi = diag(1 :/ w)
+    dE = (-Dwi * Dwi * diag(dw) * B' + Dwi * dB') * Psi + (Dwi * B' - I(M)) * dPsi
+    // completion
     Thx  = (Theta, -rowsum(Theta) - b0)
     Thx  = Thx \ -colsum(Thx)
     dThx = (dTheta, -rowsum(dTheta) - db0)
     dThx = dThx \ -colsum(dThx)
     wx  = w \ (1 - sum(w));       dwx  = dw \ -sum(dw)
-    b1x = b1 \ r.qother;          db1x = db1 \ 0
+    b1x = b1 \ qother;            db1x = db1 \ 0
     b0x = b0 \ -sum(b0);          db0x = db0 \ -sum(db0)
     ex  = 1 :- b1x + b0x :/ wx
     dex = -db1x + db0x :/ wx - b0x :* dwx :/ (wx:^2)
@@ -848,7 +892,6 @@ real rowvector _duvm_dtheta(struct duvm_r scalar r, real matrix dS, real matrix 
     dBx = (dThx - Bx * dPsix) * Psixi
     Dwi = diag(1 :/ wx)
     dEx = (-Dwi * Dwi * diag(dwx) * Bx + Dwi * dBx) * Psix + (Dwi * Bx - I(M+1)) * dPsix
-    return((vec(dEx')', dex', db1'))
 }
 
 // Jacobian of theta with respect to eta = (vec S, vec R, ome, chi, b0, b1, wbar)
@@ -859,7 +902,7 @@ real matrix _duvm_jac(struct duvm_r scalar r)
     real colvector z, u
     M = r.M
     q = 2*M*M + 5*M
-    K = (M+1)^2 + (M+1) + M
+    K = cols(_duvm_bvec(r))
     G = J(K, q, .)
     Z = J(M, M, 0); z = J(M, 1, 0)
     for (j = 1; j <= M; j++) for (i = 1; i <= M; i++) {
@@ -1101,7 +1144,8 @@ struct duvm_r scalar _duvm_estimate(struct duvm_d scalar d, real rowvector cf,
 // the parameter vector reported in e(b): vec by row of E_x, then e_x, then b1
 real rowvector _duvm_bvec(struct duvm_r scalar r)
 {
-    return((vec(r.Exsy')', r.ex', r.b1'))
+    return((vec(r.Enq')', vec(r.Ens')', vec(r.Esy')', vec(r.Exns')', vec(r.Exsy')',
+            r.ex', r.b1', r.wbar', r.zeta'))
 }
 
 // ---------------------------------------------------------------- bootstrap
@@ -1238,9 +1282,7 @@ void _duvm_b(string scalar Rname, string scalar goods, string scalar bname, stri
     p = findexternal(Rname); r = *p
     M = r.M
     g = tokens(goods); gx = (g, "other")
-    cs = J(0, 2, "")
-    for (j = 1; j <= M+1; j++) cs = cs \ (J(M+1, 1, gx[j]), gx')
-    cs = cs \ (J(M+1, 1, "exp"), gx') \ (J(M, 1, "qual"), g')
+    cs = _duvm_stripes(M, g, gx)
     st_matrix(bname, _duvm_bvec(r))
     st_matrixcolstripe(bname, cs)
     if (r.hasV) {
@@ -1250,6 +1292,21 @@ void _duvm_b(string scalar Rname, string scalar goods, string scalar bname, stri
     }
     st_local("duvm_N", strofreal(r.N))
     st_local("duvm_hasV", strofreal(r.hasV))
+}
+
+// names of e(b): eq = table, name = quantity_price
+string matrix _duvm_stripes(real scalar M, string rowvector g, string rowvector gx)
+{
+    string matrix cs
+    string rowvector tabs
+    real scalar t, i, j
+    cs = J(0, 2, "")
+    tabs = ("E_noqual", "E_M", "E_Msym")
+    for (t = 1; t <= 3; t++) for (i = 1; i <= M; i++) for (j = 1; j <= M; j++) cs = cs \ (tabs[t], g[i] + "_p" + g[j])
+    tabs = ("E_x", "E_xsym")
+    for (t = 1; t <= 2; t++) for (i = 1; i <= M+1; i++) for (j = 1; j <= M+1; j++) cs = cs \ (tabs[t], gx[i] + "_p" + gx[j])
+    cs = cs \ (J(M+1, 1, "exp"), gx') \ (J(M, 1, "qual"), g') \ (J(M, 1, "share"), g') \ (J(M, 1, "zeta"), g')
+    return(cs)
 }
 
 void _duvm_post(string scalar Rname, string scalar goods, string scalar Xnames)
@@ -1304,12 +1361,18 @@ void _duvm_post(string scalar Rname, string scalar goods, string scalar Xnames)
     _duvm_mat("e(N_clust_report)", r.Crep', "N", g)
     _duvm_mat("e(N_clust_pair)",   r.Cpair', "N", g)
     if (r.hasV) {
-        K = (M+1)^2
         se = sqrt(diagonal(r.V))
-        _duvm_mat("e(se_elast_price)", rowshape(se[1..K], M+1), gx, gx)
+        K = 0
+        _duvm_mat("e(se_elast_price_noqual)", rowshape(se[K+1..K+M*M], M), g, g);       K = K + M*M
+        _duvm_mat("e(se_elast_price_M_ns)",   rowshape(se[K+1..K+M*M], M), g, g);       K = K + M*M
+        _duvm_mat("e(se_elast_price_M)",      rowshape(se[K+1..K+M*M], M), g, g);       K = K + M*M
+        _duvm_mat("e(se_elast_price_ns)", rowshape(se[K+1..K+(M+1)^2], M+1), gx, gx);   K = K + (M+1)^2
+        _duvm_mat("e(se_elast_price)",    rowshape(se[K+1..K+(M+1)^2], M+1), gx, gx);   K = K + (M+1)^2
         _duvm_mat("e(se_elast_exp_x)", se[K+1..K+M+1]', "Std. err.", gx)
-        _duvm_mat("e(se_elast_exp)",   se[K+1..K+M]', "Std. err.", g)
-        _duvm_mat("e(se_elast_qual)",  se[K+M+2..K+2*M+1]', "Std. err.", g)
+        _duvm_mat("e(se_elast_exp)",   se[K+1..K+M]', "Std. err.", g);                  K = K + M + 1
+        _duvm_mat("e(se_elast_qual)",  se[K+1..K+M]', "Std. err.", g);                  K = K + M
+        _duvm_mat("e(se_shares_mean)", se[K+1..K+M]', "Std. err.", g);                  K = K + M
+        _duvm_mat("e(se_zeta)",        se[K+1..K+M]', "Std. err.", g)
         if (r.boot) {
             st_matrix("e(boot_b)", r.bootb)
             st_numscalar("e(N_reps_ok)", r.reps_ok)

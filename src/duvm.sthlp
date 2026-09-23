@@ -53,6 +53,7 @@
 {syntab:Reporting}
 {synopt:{opt hg:roup(varname)}}re-estimate within each group and report the own-price elasticities{p_end}
 {synopt:{opt dec(#)}}decimals displayed; default 3{p_end}
+{synopt:{opt seall}}display the standard errors after every price-elasticity table, not only after the final one{p_end}
 {synopt:{opt dreg:res(1)}}display the first-stage regressions{p_end}
 {synopt:{opt notab:le}}suppress the tables{p_end}
 
@@ -193,6 +194,11 @@ is 1 - {it:b1} + {it:b0}/{it:wbar}; the second stage estimates
 Quality shading links the two through the parameter zeta of eq. (5.92),
 zeta = {it:b1} / [{it:b0} + {it:wbar}(1 - {it:b1})], so that Psi = [I - D(zeta)B' + D(zeta)D(wbar)]^-1,
 Theta = B'Psi and the price elasticities of quantity are E = [D(wbar)^-1 B' - I]Psi.
+Every estimate displayed has a standard error in {cmd:e()}: the shares, the
+expenditure and quality elasticities, zeta, and the five price-elasticity
+matrices; the tables show the standard errors of the final matrix, {opt seall}
+shows them after every matrix, and {cmd:estat elasticities} shows those of the
+variant it displays.
 The tables follow the order of the WELCOM version: 1 budget shares, 2
 expenditure elasticities, 3 quality elasticities, 4 E with the unit values
 taken as prices (no quality correction), 5-6 the quality-corrected M x M
@@ -257,15 +263,16 @@ the tables.
 {synopt:{cmd:e(compat)}}{cmd:compat} when set{p_end}
 
 {p2col 5 24 28 2: Matrices}{p_end}
-{synopt:{cmd:e(b)}}the completed, symmetry-restricted, quality-corrected E row by row, then the expenditure elasticities e_x and the quality elasticities b1{p_end}
+{synopt:{cmd:e(b)}}every reported estimate: the five price-elasticity matrices row by row (equations {cmd:E_noqual}, {cmd:E_M}, {cmd:E_Msym}, {cmd:E_x}, {cmd:E_xsym}; names {it:quantity}{cmd:_p}{it:price}), the expenditure elasticities ({cmd:exp}), the quality elasticities ({cmd:qual}), the mean budget shares ({cmd:share}) and the quality parameters ({cmd:zeta}){p_end}
 {synopt:{cmd:e(V)}}their variance{p_end}
 {synopt:{cmd:e(elast_price)}}E, completed system, symmetry restricted (M+1 x M+1){p_end}
 {synopt:{cmd:e(elast_price_ns)}}idem, unrestricted{p_end}
 {synopt:{cmd:e(elast_price_M)}}, {cmd:e(elast_price_M_ns)}}the M x M systems{p_end}
 {synopt:{cmd:e(elast_price_noqual)}}E without the quality correction{p_end}
-{synopt:{cmd:e(se_elast_price)}}standard errors of {cmd:e(elast_price)}{p_end}
+{synopt:{cmd:e(se_elast_price)}}, {cmd:e(se_elast_price_ns)}, {cmd:e(se_elast_price_M)}, {cmd:e(se_elast_price_M_ns)}, {cmd:e(se_elast_price_noqual)}}standard errors of the five matrices{p_end}
 {synopt:{cmd:e(elast_exp)}}, {cmd:e(elast_exp_x)}, {cmd:e(se_elast_exp)}}expenditure elasticities{p_end}
 {synopt:{cmd:e(elast_qual)}}, {cmd:e(se_elast_qual)}}quality elasticities{p_end}
+{synopt:{cmd:e(se_shares_mean)}}, {cmd:e(se_zeta)}}standard errors of the mean shares and of zeta{p_end}
 {synopt:{cmd:e(elast_price_own_group)}}own-price elasticities by group ({opt hgroup()}){p_end}
 {synopt:{cmd:e(shares_mean)}}, {cmd:e(b0)}, {cmd:e(b1)}, {cmd:e(zeta)}, {cmd:e(zeta_x)}}first-stage parameters{p_end}
 {synopt:{cmd:e(beta0)}}, {cmd:e(beta1)}}all first-stage coefficients{p_end}

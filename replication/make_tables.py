@@ -90,7 +90,7 @@ _, ratios = read("table5_ratios")
 lab = {"srs": "Simple random sampling of clusters", "aw": "Sampling weights (aweight)",
        "svy": "Survey design (svyset, strata, pweight)"}
 lines = ["\\begin{tabular}{llrrrrrrrr}", "\\toprule",
-         "Design & Standard error & Corn & Wheat & Rice & Other & All other & \\multicolumn{3}{c}{Ratio over the 34 parameters} \\\\",
+         "Design & Standard error & Corn & Wheat & Rice & Other & All other & \\multicolumn{3}{c}{Ratio over all parameters} \\\\",
          " & & & & & & & min & median & max \\\\", "\\midrule"]
 rd = {r: v for r, v in ratios}
 for i in range(0, len(body), 2):
