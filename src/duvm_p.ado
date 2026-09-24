@@ -1,4 +1,4 @@
-*! duvm_p 1.0.0  2026-09-24  Abdelkrim Araar
+*! duvm_p 1.0.1  2026-09-24  Abdelkrim Araar
 *! predict after duvm: the three Engel curves of a good
 *!
 *!     predict [type] newvar [if] [in], {share|quality|quantity} good(name) [atmeans|asobserved] [stdp]

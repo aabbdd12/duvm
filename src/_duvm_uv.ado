@@ -1,4 +1,4 @@
-*! _duvm_uv 1.0.0  2026-09-24  Abdelkrim Araar
+*! _duvm_uv 1.0.1  2026-09-24  Abdelkrim Araar
 *! The budget share and the log unit value of one good as duvm uses them.
 *!
 *!     _duvm_uv good, touse(varname) wt(varname) cluster(varname)

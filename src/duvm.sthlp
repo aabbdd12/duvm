@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0.0  23sep2026}{...}
+{* *! version 1.0.1  24sep2026}{...}
 {vieweralsosee "duvmdiag" "help duvmdiag"}{...}
 {viewerjumpto "Syntax" "duvm##syntax"}{...}
 {viewerjumpto "Description" "duvm##description"}{...}
@@ -472,4 +472,4 @@ chapter 5.{p_end}
 {title:Author}
 
 {pstd}Abdelkrim Araar, Universit{c e'} Laval / PEP, aabd@ecn.ulaval.ca{p_end}
-{pstd}Version 1.0.0. License: GPL-3.0-or-later.{p_end}
+{pstd}Version 1.0.1. License: GPL-3.0-or-later.{p_end}

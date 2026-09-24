@@ -1,4 +1,4 @@
-*! duvm_estat 1.0.0  2026-09-23  Abdelkrim Araar
+*! duvm_estat 1.0.1  2026-09-24  Abdelkrim Araar
 *! estat after duvm: diagnostics, elasticities, quality, engel
 program define duvm_estat, rclass
     version 14.2

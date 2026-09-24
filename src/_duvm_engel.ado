@@ -1,4 +1,4 @@
-*! _duvm_engel 1.0.0  2026-09-24  Abdelkrim Araar
+*! _duvm_engel 1.0.1  2026-09-24  Abdelkrim Araar
 *! Engel curves after duvm: the parameters of the curves of one good and their
 *! linearized covariance. Used by predict (duvm_p) and estat engel.
 *!
