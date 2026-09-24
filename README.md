@@ -1,6 +1,6 @@
 # Estimating Deaton's unit-value model: the duvm Stata module
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22938259.svg)](https://doi.org/10.5281/zenodo.22938259)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22938872.svg)](https://doi.org/10.5281/zenodo.22938872)
 
 `duvm` estimates the unit-value model of Deaton (1988, 1990, 1997 ch. 5):
 own- and cross-price elasticities of quantity, expenditure elasticities and
@@ -90,10 +90,9 @@ stata.toc, duvm.pkg    net-install manifest
 ## Citing
 
 Araar, A. (2026). *Estimating Deaton's unit-value model: the duvm Stata
-module*. Technical note, Zenodo. https://doi.org/10.5281/zenodo.22938259
+module*. Technical note, Zenodo. https://doi.org/10.5281/zenodo.22938872
 
-This DOI covers all versions of the note and resolves to the latest one; the
-version of 24 September 2026 is https://doi.org/10.5281/zenodo.22938591. The
+This DOI covers all versions of the note and resolves to the latest one. The
 software is at https://github.com/aabbdd12/duvm (see `CITATION.cff`). Please
 also cite the model's references:
 
