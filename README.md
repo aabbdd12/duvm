@@ -34,9 +34,16 @@ of clusters, sampling weights and a stratified design; the technical note in
 
 ## Installation
 
+The package:
+
 ```stata
 net install duvm, from("https://raw.githubusercontent.com/aabbdd12/duvm/main") replace
-net get duvm          // the example data and the guided tour
+```
+
+The example data and the guided tour, copied into the current folder:
+
+```stata
+net get duvm, from("https://raw.githubusercontent.com/aabbdd12/duvm/main") replace
 ```
 
 Stata 14.2 or later, nothing else: the `stars` and `saveres()` tables are
@@ -45,18 +52,17 @@ shipped with the package.
 
 ## Quick start
 
+Each command is on one line, so that it can be pasted into the Command window.
+
 ```stata
 use Mexico_2014_Cereals, clear
-duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
-    cluster(psu) region(rururb) indcat(sex educ) indcon(age)
-duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
-    cluster(psu) region(rururb) indcat(sex educ) indcon(age)
+duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)
+duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)
 estat quality
-duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
-    cluster(psu) region(rururb) indcat(sex educ) indcon(age) stars saveres(duvm_results.docx)
+duvm, stars
+duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) notable saveres(duvm_results.docx)
 svyset psu [pw=sweight], strata(quintile)
-duvm corn wheat rice other, hhsize(hhsize) expend(hh_current_inc) cluster(psu) ///
-    region(rururb) indcat(sex educ) indcon(age) vce(svy)
+duvm corn wheat rice other, hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) vce(svy)
 ```
 
 `help duvm` and `help duvmdiag` document every option and stored result;
