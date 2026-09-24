@@ -11,11 +11,12 @@ d second stage with the errors-in-variables correction, quality shading through
 d the separability parameter, completion of the system, approximate Slutsky
 d symmetry. Linearized (influence-function) variance by cluster or by survey
 d design (svyset), design bootstrap of both stages, diagnostics (duvmdiag,
-d estat diagnostics), dialog box. An option compat reproduces the WELCOM version.
+d estat diagnostics), dialog box, Engel curves after estimation (predict,
+d estat engel). Option compat reproduces the code published with Deaton's book.
 d
 d Requires: Stata 14.2 or later
 d
-d Distribution-Date: 20260923
+d Distribution-Date: 20260924
 d
 f src/duvm.ado
 f src/_duvm_tabstars.ado
