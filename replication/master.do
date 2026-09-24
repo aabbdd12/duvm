@@ -4,7 +4,7 @@
 *!     cd replication
 *!     do master.do
 *!
-*! Data: ../examples/Mexico_2014_Cereals.dta; module: ../src. Everything
+*! Data: ../examples/mexico_2014_cereals.dta; module: ../src. Everything
 *! written goes to out/; python make_tables.py then writes the LaTeX tables
 *! into ../paper/fig. README.md maps each script to its table.
 *!

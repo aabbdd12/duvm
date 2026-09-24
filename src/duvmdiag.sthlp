@@ -42,7 +42,7 @@ report is available after estimation with {cmd:estat diagnostics}.
 
 {title:Example}
 
-{phang2}{cmd:. use Mexico_2014_Cereals}{p_end}
+{phang2}{cmd:. use mexico_2014_cereals}{p_end}
 {phang2}{cmd:. duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)}{p_end}
 
 

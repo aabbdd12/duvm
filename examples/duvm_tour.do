@@ -1,8 +1,8 @@
 * duvm_tour.do — a guided tour of duvm on the Mexican cereal groups (ENIGH 2014).
-* Run from the folder that holds Mexico_2014_Cereals.dta (net get duvm).
+* Run from the folder that holds mexico_2014_cereals.dta (net get duvm).
 clear all
 set more off
-use Mexico_2014_Cereals, clear
+use mexico_2014_cereals, clear
 describe w* luv* hhsize hh_current_inc psu sweight rururb sex educ age decile quintile
 
 * 1. What will the data support?  (no estimation yet)

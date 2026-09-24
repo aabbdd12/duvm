@@ -7,7 +7,7 @@ if _rc {
 }
 local ROOT = subinstr("`c(pwd)'", "\", "/", .) + "/.."
 global ROOT "`ROOT'"
-global DATA "`ROOT'/examples/Mexico_2014_Cereals.dta"
+global DATA "`ROOT'/examples/mexico_2014_cereals.dta"
 global GOODS "corn wheat rice other"
 global OPTS "hhsize(hhsize) expend(hh_current_inc) cluster(psu) indcat(sex educ) indcon(age) region(rururb)"
 adopath ++ "`ROOT'/src"

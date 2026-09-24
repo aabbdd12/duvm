@@ -14,7 +14,7 @@ then, to write the LaTeX tables into `../paper/fig`:
 python make_tables.py
 ```
 
-The data are `../examples/Mexico_2014_Cereals.dta`, the module `../src`. The
+The data are `../examples/mexico_2014_cereals.dta`, the module `../src`. The
 scripts write CSV files into `out/`. `global BOOT 0` before `do master.do`
 reduces the two bootstrap scripts from 400 to 40 replications.
 

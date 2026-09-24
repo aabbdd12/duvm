@@ -55,7 +55,7 @@ shipped with the package.
 Each command is on one line, so that it can be pasted into the Command window.
 
 ```stata
-use Mexico_2014_Cereals, clear
+use mexico_2014_cereals, clear
 duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)
 estat quality
@@ -71,8 +71,9 @@ duvm corn wheat rice other, hhsize(hhsize) expend(hh_current_inc) cluster(psu) r
 ## Layout
 
 ```
-src/          duvm.ado, duvm.sthlp, duvm.dlg, duvm_estat.ado, duvmdiag.ado, duvmdiag.sthlp
-examples/     Mexico_2014_Cereals.dta (four cereal groups of the ENIGH 2014),
+src/          duvm.ado, duvm.sthlp, duvm.dlg, duvm_estat.ado, duvmdiag.ado, duvmdiag.sthlp,
+              _duvm_tabstars.ado (private copy of tabstars)
+examples/     mexico_2014_cereals.dta (four cereal groups of the ENIGH 2014),
               duvm_tour.do
 paper/        the technical note (PDF)
 replication/  one script per table of the note, master.do, make_tables.py

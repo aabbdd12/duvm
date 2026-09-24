@@ -313,7 +313,7 @@ the tables.
 {title:Examples}
 
 {pstd}The cereal groups of the Mexican ENIGH 2014 (installed with the package){p_end}
-{phang2}{cmd:. use Mexico_2014_Cereals}{p_end}
+{phang2}{cmd:. use mexico_2014_cereals}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)}{p_end}
 {phang2}{cmd:. estat diagnostics}{p_end}
 {phang2}{cmd:. estat quality}{p_end}

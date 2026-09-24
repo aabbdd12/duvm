@@ -24,5 +24,5 @@ f src/duvm.dlg
 f src/duvm_estat.ado
 f src/duvmdiag.ado
 f src/duvmdiag.sthlp
-f examples/Mexico_2014_Cereals.dta
+f examples/mexico_2014_cereals.dta
 f examples/duvm_tour.do
