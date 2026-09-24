@@ -40,7 +40,7 @@ net get duvm          // the example data and the guided tour
 ```
 
 Stata 14.2 or later, nothing else: the `stars` and `saveres()` tables are
-built by a private copy of the `tabstars` command
+built by a private copy of [tabstars](https://github.com/aabbdd12/tabstars)
 shipped with the package.
 
 ## Quick start
