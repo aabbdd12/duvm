@@ -93,7 +93,7 @@ Araar, A. (2026). *Estimating Deaton's unit-value model: the duvm Stata
 module*. Technical note, Zenodo. https://doi.org/10.5281/zenodo.22938259
 
 This DOI covers all versions of the note and resolves to the latest one; the
-version of 24 September 2026 is https://doi.org/10.5281/zenodo.22938260. The
+version of 24 September 2026 is https://doi.org/10.5281/zenodo.22938591. The
 software is at https://github.com/aabbdd12/duvm (see `CITATION.cff`). Please
 also cite the model's references:
 
