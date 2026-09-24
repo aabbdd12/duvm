@@ -28,6 +28,7 @@ reduces the two bootstrap scripts from 400 to 40 replications.
 | `Table8_timing.do` | Table 8 (execution times; the WELCOM rows need the WELCOM files, otherwise they stay missing) |
 | `TableA1_corrections.do` | Table A1 (from the Stata code published with Deaton (1997) to the book, one correction at a time) |
 | `TableA2_compat_code.do` | Table A2 (`duvm, compat` against `deaton_1997_ch5.do`, a line-by-line transcription of Deaton's programs) |
+| `Figure1_3_engel.do` | Figures 1-3 (Engel curves of the budget share, the unit value and the quantity, drawn by `estat engel`; PDF files in `../paper/fig`) |
 | `deaton_1997_ch5.do` | Deaton's `allindia.do` and `mkmats.do`, transcribed for the Mexican data (used by Table A2) |
 
 `_setup.do` holds the common preamble (paths, the model, a CSV writer).

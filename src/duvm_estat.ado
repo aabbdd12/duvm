@@ -1,5 +1,5 @@
 *! duvm_estat 1.0.0  2026-09-23  Abdelkrim Araar
-*! estat after duvm: diagnostics, elasticities, quality
+*! estat after duvm: diagnostics, elasticities, quality, engel
 program define duvm_estat, rclass
     version 14.2
     if "`e(cmd)'" != "duvm" error 301
@@ -14,8 +14,11 @@ program define duvm_estat, rclass
     else if inlist("`sub'", "quality", "qual") {
         _duvm_estat_quality `0'
     }
+    else if "`sub'" == "engel" {
+        _duvm_estat_engel `0'
+    }
     else {
-        di as err "estat `sub' not allowed after duvm; use estat diagnostics, estat elasticities or estat quality"
+        di as err "estat `sub' not allowed after duvm; use estat diagnostics, estat elasticities, estat quality or estat engel"
         exit 198
     }
     return add
@@ -47,9 +50,55 @@ program define _duvm_estat_diag, rclass
     di as txt _n "Diagnostics for the unit-value model" _col(49) "Number of obs" _col(67) "= " as res %10.0fc `N'
     di as txt _col(49) "Number of clusters" _col(67) "= " as res %10.0fc `C'
 
+    * ---- table 0: how the non-buyers are coded in the data ----
+    * a buyer has a positive budget share; its unit value is the only one the
+    * unit-value equation should see (nonbuyers(drop), the default)
+    local nwarn 0
+    local mode "`e(nonbuyers)'"
+    if "`mode'" == "" local mode "asis"
+    tempvar wt0 es0
+    local wexp = trim(subinstr(`"`e(wexp)'"', "=", "", 1))
+    if "`wexp'" == "" qui gen double `wt0' = 1
+    else              qui gen double `wt0' = `wexp'
+    qui gen byte `es0' = e(sample)
+    tempname T0
+    matrix `T0' = J(`M', 7, .)
+    forvalues j = 1/`M' {
+        local g : word `j' of `goods'
+        tempvar sv`j' uv`j'
+        _duvm_uv `g', touse(`es0') wt(`wt0') cluster(`e(clustvar)') mode(`mode') share(`sv`j'') uv(`uv`j'')
+        matrix `T0'[`j', 1] = r(n_buy)
+        matrix `T0'[`j', 2] = r(n_buy) / `N' * 100
+        matrix `T0'[`j', 3] = r(n_wmiss)
+        matrix `T0'[`j', 4] = r(n_nbuv)
+        matrix `T0'[`j', 5] = r(n_nbzero)
+        matrix `T0'[`j', 6] = r(n_buynouv)
+        matrix `T0'[`j', 7] = r(c_uvnobuy)
+        if r(n_wmiss) > 0 {
+            local ++nwarn
+            local warn`nwarn' = "`g': " + string(r(n_wmiss), "%12.0fc") + " budget shares are missing, read as 0 (non-buyers); check that a missing share means no purchase, not a missing record"
+        }
+        if r(n_nbuv) > 0 {
+            local ++nwarn
+            local nz = cond(r(n_nbzero) > 0, " (" + string(r(n_nbzero), "%12.0fc") + " coded 0)", "")
+            if "`mode'" == "drop" local warn`nwarn' = "`g': " + string(r(n_nbuv), "%12.0fc") + " non-buyers have a unit value in the data`nz': imputed or zero values, ignored by nonbuyers(drop)"
+            else if "`mode'" == "asis" local warn`nwarn' = "`g': " + string(r(n_nbuv), "%12.0fc") + " non-buyers have a unit value`nz', used as it is (nonbuyers(asis)); imputed values bias the quality elasticity toward zero"
+            else local warn`nwarn' = "`g': " + string(r(n_nbuv), "%12.0fc") + " non-buyers have a unit value in the data`nz'; nonbuyers(average) replaces it by the mean of the buyers of the cluster"
+        }
+        if r(c_uvnobuy) > 0 {
+            local ++nwarn
+            local warn`nwarn' = "`g': " + string(r(c_uvnobuy), "%12.0fc") + " clusters have a unit value but no buyer: prices imputed from outside the cluster" + cond("`mode'" == "asis", ", used as prices by the second stage", ", ignored")
+        }
+    }
+    matrix rownames `T0' = `goods'
+    matrix colnames `T0' = "Buyers" "Buy_pct" "Share_miss" "NonbuyUV" "of_which_0" "BuyNoUV" "Cl_UVnobuy"
+    di _n as txt "Table D0: Buyers (positive share) and the coding of the non-buyers; non-buyers treated by nonbuyers(" as res "`mode'" as txt ")"
+    matlist `T0', border(rows) format(%10.0fc) twidth(9) left(2)
+    di as txt "  Share_miss: budget shares coded . (read as 0); NonbuyUV: non-buyers with a unit value in the data;"
+    di as txt "  BuyNoUV: buyers without a unit value; Cl_UVnobuy: clusters with a unit value but no buyer"
+
     * ---- table 1: the data behind each good ----
     matrix `T' = J(`M', 7, .)
-    local nwarn 0
     forvalues j = 1/`M' {
         local g : word `j' of `goods'
         matrix `T'[`j', 1] = `w'[1, `j'] * 100
@@ -70,7 +119,7 @@ program define _duvm_estat_diag, rclass
     }
     matrix rownames `T' = `goods'
     matrix colnames `T' = "Share_pct" "Reporters" "Rep_pct" "Clusters" "n_plus_harm" "n_harm" "Pairs_min"
-    di _n as txt "Table D1: Households reporting a unit value, clusters, and the harmonic cluster sizes of (5.55)"
+    di _n as txt "Table D1: Households whose unit value enters the model, clusters, and the harmonic cluster sizes of (5.55)"
     matlist `T', border(rows) format(%10.2f) twidth(9) left(2)
 
     * ---- table 2: the second stage ----
@@ -241,4 +290,219 @@ program define _duvm_estat_quality, rclass
     matrix colnames `P' = `goods'
     matlist `P', border(rows) format(`fmt') twidth(22) left(2)
     return matrix quality = `T'
+end
+
+* ---------------------------------------------------------------------------
+* estat engel: the Engel curves of every good, one panel per good, against the
+* percentiles of total expenditure (the layout of easi's estat engel)
+program define _duvm_estat_engel, rclass
+    syntax [if] [in] [, SHare QUality QUAntity ATMeans ASObserved N(integer 100) ///
+        TRIM(real 1) Level(cilevel) NOCI DATA(string) SAVing(string asis) NODRAW ///
+        BWidth(real 0) LNX NORMalize *]
+    local nc : word count `share' `quality' `quantity'
+    if `nc' > 1 {
+        di as err "specify only one of share, quality and quantity"
+        exit 198
+    }
+    if `nc' == 0 local share share
+    local curve `share'`quality'`quantity'
+    if "`atmeans'" != "" & "`asobserved'" != "" {
+        di as err "specify atmeans or asobserved, not both"
+        exit 198
+    }
+    local asobs = ("`asobserved'" != "")
+    if "`normalize'" != "" & ("`curve'" != "quantity" | `asobs') {
+        di as err "normalize goes with quantity at the means: it sets the log quantity to 0 at the mean of ln x"
+        exit 198
+    }
+    if `bwidth' != 0 & !`asobs' {
+        di as err "bwidth() goes with asobserved: the Engel curve at the means is exact, there is nothing to smooth"
+        exit 198
+    }
+    if `n' < 2 {
+        di as err "n() must be at least 2"
+        exit 198
+    }
+    if `trim' < 0 | `trim' >= 50 {
+        di as err "trim() must be in [0, 50)"
+        exit 198
+    }
+    if "`e(expend)'" == "" {
+        di as err "these duvm results predate the Engel curves; estimate the model again"
+        exit 301
+    }
+    local goods `e(goods)'
+    local M : word count `goods'
+    marksample touse, novarlist
+    qui replace `touse' = 0 if !e(sample)
+    tempvar wt lnxv
+    local wexp = trim(subinstr(`"`e(wexp)'"', "=", "", 1))
+    if "`wexp'" == "" qui gen double `wt' = 1
+    else              qui gen double `wt' = `wexp'
+    qui gen double `lnxv' = ln(`e(expend)')
+    local zc = invnormal((100 + `level') / 200)
+    local ci = ("`noci'" == "" & !`asobs' & "`e(vce)'" != "none")
+
+    * ---- the curves: parameters at the means, or fitted values as observed ----
+    if !`asobs' {
+        forvalues j = 1/`M' {
+            tempname th`j' V`j'
+            if `ci' _duvm_engel, good(`j')
+            else    _duvm_engel, good(`j') novar
+            matrix `th`j'' = r(theta)
+            local L0_`j' = r(L0)
+            local wb_`j' = r(wbar)
+            if `ci' {
+                if "`curve'" != "quality" & r(dev_b0) > 1e-6 {
+                    di as txt "(no confidence band: the share equations hold the inverse Mills ratio of csb(1))"
+                    local ci 0
+                }
+                else matrix `V`j'' = r(V)
+            }
+        }
+    }
+    else {
+        forvalues j = 1/`M' {
+            tempvar raw`j'
+            qui predict double `raw`j'' if `touse', `curve' good(`: word `j' of `goods'') asobserved
+        }
+    }
+
+    preserve
+    qui keep if `touse'
+    local nobs = _N
+    if `n' > `nobs' local n = `nobs'
+    tempvar gx gp
+    qui gen double `gx' = .
+    qui gen double `gp' = .
+    forvalues i = 1/`n' {
+        local q = `trim' + (100 - 2 * `trim') * (`i' - 0.5) / `n'
+        qui _pctile `lnxv' [aw=`wt'], percentiles(`q')
+        qui replace `gx' = r(r1) in `i'
+        qui replace `gp' = `q' in `i'
+    }
+    if `asobs' {
+        if `bwidth' == 0 {
+            qui lpoly `raw1' `lnxv' [aw=`wt'], degree(1) nograph
+            local bwidth = r(bwidth)
+        }
+        forvalues j = 1/`M' {
+            qui lpoly `raw`j'' `lnxv' [aw=`wt'], degree(1) bwidth(`bwidth') at(`gx') nograph generate(_w`j')
+        }
+        local bws = string(`bwidth', "%6.4f")
+        local what "as observed, local linear, bandwidth `bws'"
+    }
+    qui keep in 1/`n'
+    qui gen double pctile = `gp'
+    qui gen double lnexp = `gx'
+    if !`asobs' {
+        local what "at the means of the other regressors"
+        forvalues j = 1/`M' {
+            local a0 = el(`th`j'', 1, 1)
+            local b0 = el(`th`j'', 1, 2)
+            local a1 = el(`th`j'', 1, 3)
+            local b1 = el(`th`j'', 1, 4)
+            if "`curve'" == "share" {
+                qui gen double _w`j' = `a0' + `b0' * lnexp
+                if `ci' qui gen double _se`j' = sqrt(el(`V`j'',1,1) + 2*lnexp*el(`V`j'',1,2) + lnexp^2*el(`V`j'',2,2))
+            }
+            else if "`curve'" == "quality" {
+                qui gen double _w`j' = `a1' + `b1' * lnexp
+                if `ci' qui gen double _se`j' = sqrt(el(`V`j'',3,3) + 2*lnexp*el(`V`j'',3,4) + lnexp^2*el(`V`j'',4,4))
+            }
+            else {
+                tempvar sh one
+                qui gen double `sh' = `a0' + `b0' * lnexp
+                if "`normalize'" == "" qui gen double _w`j' = ln(`sh') + lnexp - (`a1' + `b1' * lnexp) if `sh' > 0
+                else qui gen double _w`j' = ln(`sh') - ln(`wb_`j'') + (1 - `b1') * (lnexp - `L0_`j'') if `sh' > 0
+                qui count if !(`sh' > 0)
+                if r(N) {
+                    di as txt "(`: word `j' of `goods'': the predicted share is not positive on `r(N)' of the `n' points; the log quantity stops there)"
+                }
+                if `ci' {
+                    qui gen byte `one' = 1
+                    qui gen double _se`j' = .
+                    if "`normalize'" == "" _duvm_engel, qse(_se`j' `sh' lnexp `one') vmat(`V`j'')
+                    else _duvm_engel, qse(_se`j' `sh' lnexp `one') vmat(`V`j'') ref(`L0_`j'') sh0(`wb_`j'')
+                    drop `one'
+                }
+                drop `sh'
+            }
+        }
+    }
+    forvalues j = 1/`M' {
+        if `ci' {
+            qui gen double _lo`j' = _w`j' - `zc' * _se`j'
+            qui gen double _hi`j' = _w`j' + `zc' * _se`j'
+        }
+        label variable _w`j' "`: word `j' of `goods''"
+    }
+    label variable pctile "Percentiles of total expenditure"
+    label variable lnexp "Log of total expenditure"
+    if `ci' keep pctile lnexp _w* _se* _lo* _hi*
+    else    keep pctile lnexp _w*
+    order pctile lnexp
+
+    if `"`data'"' != "" {
+        qui save `data', replace
+        di as txt `"curve data saved to {bf:`data'}"'
+    }
+
+    if "`nodraw'" == "" {
+        if "`curve'" == "share"        local yt "Budget share"
+        else if "`curve'" == "quality" local yt "Log unit value"
+        else if "`normalize'" != ""    local yt "Log quantity, 0 at mean ln x"
+        else                           local yt "Log quantity"
+        * the x axis: percentiles of total expenditure (as easi), or its log
+        if "`lnx'" != "" {
+            local xv lnexp
+            local xl "xlabel(, labsize(vsmall))"
+            local xt "Log of total expenditure"
+        }
+        else {
+            local xv pctile
+            local xl "xlabel(0(20)100, labsize(vsmall))"
+            local xt "Percentiles of total expenditure"
+        }
+        local plots
+        forvalues j = 1/`M' {
+            local band
+            if `ci' local band (rarea _lo`j' _hi`j' `xv', color(navy%25) lwidth(none))
+            tempname g`j'
+            twoway `band' (line _w`j' `xv', lcolor(navy) lpattern(solid) lwidth(medthick)), ///
+                title("`: word `j' of `goods''", size(medsmall)) ///
+                ytitle("`yt'", size(vsmall)) xtitle("") ylabel(, labsize(vsmall) angle(0)) ///
+                `xl' legend(off) graphregion(color(white)) ///
+                name(`g`j'', replace) nodraw
+            local plots `plots' `g`j''
+        }
+        local nt `""`yt', `what'""'
+        local nt2
+        if !`asobs' & "`curve'" != "quantity" local nt2 "straight lines in ln x (the first stage of duvm)"
+        if !`asobs' & "`curve'" == "quantity" local nt2 "ln w + ln x - ln v; falls where the share nears 0"
+        if `trim' > 0 {
+            if "`nt2'" != "" local nt2 "`nt2'; "
+            local nt2 "`nt2'tails trimmed at `trim'%"
+        }
+        if `ci' local nt2 "`nt2'; `level'% confidence band (linearized)"
+        if "`nt2'" != "" local nt `"`nt' "`nt2'""'
+        local ncol = ceil(sqrt(`M'))
+        local nrow = ceil(`M' / `ncol')
+        local grid
+        if !strpos(`"`options'"', "cols(") & !strpos(`"`options'"', "rows(") local grid cols(`ncol')
+        local gsize
+        if !strpos(`"`options'"', "xsize(") & !strpos(`"`options'"', "ysize(") {
+            local gsize xsize(`=min(2.3 * `ncol', 12)') ysize(`=min(1.9 * `nrow' + 1, 12)')
+        }
+        graph combine `plots', `grid' `gsize' ///
+            title("Engel curves, unit-value model (duvm)") ///
+            b1title("`xt'", size(small)) ///
+            note(`nt', size(vsmall)) graphregion(color(white)) `options'
+        if `"`saving'"' != "" graph save `saving'
+        graph drop `plots'
+    }
+    restore
+    return scalar n = `n'
+    if `asobs' return scalar bwidth = `bwidth'
+    return local curve "`curve'"
 end

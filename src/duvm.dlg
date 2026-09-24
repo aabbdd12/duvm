@@ -71,9 +71,29 @@ BEGIN
   CHECKBOX ck_nosym    20   60  600   ., label("Do not impose the (approximate) Slutsky symmetry") option(nosymmetry)
   CHECKBOX ck_csb      20   85  600   ., label("Selection correction: inverse Mills ratio of a probit of purchase in the share equations")
 
-  GROUPBOX gb_c        10  125  640  75, label("Published code")
-  CHECKBOX ck_compat   20  145  600   ., label("Reproduce the Stata code published with Deaton (1997) (compat)") option(compat)
-  TEXT     tx_compat   40  170  600   ., label("Deaton's code is unweighted; with weights its formulas are kept and the weights applied as by default.")
+  GROUPBOX gb_nb       10  125  640  75, label("Non-buyers (households with a zero or missing budget share)")
+  TEXT     tx_nb       20  147  230   ., label("Their unit values, if the data hold any:")
+  COMBOBOX cb_nb      255  147  385   ., dropdownlist contents(nblist) values(nbvals) label("Non-buyers")
+  TEXT     tx_nb2      20  172  620   ., label("A missing budget share is read as 0: the household stays in the model as a non-buyer.")
+
+  GROUPBOX gb_c        10  210  640  75, label("Published code")
+  CHECKBOX ck_compat   20  230  600   ., label("Reproduce the Stata code published with Deaton (1997) (compat)") option(compat)
+  TEXT     tx_compat   40  255  600   ., label("Deaton's code is unweighted; with weights its formulas are kept and the weights applied as by default.")
+END
+
+LIST nblist
+BEGIN
+  Default: ignored (as in the data under compat)
+  Ignored: the unit-value equation uses the buyers only (drop)
+  Replaced by the mean of the buyers of the cluster (average)
+  Used as they are in the data (asis)
+END
+LIST nbvals
+BEGIN
+  ""
+  drop
+  average
+  asis
 END
 
 INCLUDE ifin
@@ -209,6 +229,9 @@ BEGIN
       put " csb(1)"
     }
     option opts.ck_compat
+    if opts.cb_nb {
+      put " nonbuyers(" opts.cb_nb ")"
+    }
     if se.rb_svy {
       put " vce(svy)"
     }

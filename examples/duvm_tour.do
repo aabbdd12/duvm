@@ -57,7 +57,20 @@ duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) /
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
     cluster(psu) region(rururb) indcat(sex educ) indcon(age) hgroup(quintile) notable saveres(duvm_results.tex)
 
-* 10. The stored results
+* 10. Engel curves: the budget share, the unit value (quality) and the quantity,
+*     as variables (predict) and as graphs (estat engel)
+duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
+    cluster(psu) region(rururb) indcat(sex educ) indcon(age) notable
+predict w_corn, share good(corn)
+predict se_w_corn, share good(corn) stdp
+predict lnv_*, quality
+predict lnq_*, quantity
+estat engel
+estat engel, quality lnx
+estat engel, quantity normalize
+drop w_corn se_w_corn lnv_* lnq_*
+
+* 11. The stored results
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
     cluster(psu) region(rururb) indcat(sex educ) indcon(age) notable
 ereturn list

@@ -18,7 +18,7 @@ program define duvm, eclass
           HWeight(varname numeric) CSB(integer 0) QOTHer(real 0.25) ///
           NOSYMmetry COMPAT COMPATFlags(string) VCE(string) Level(cilevel) ///
           DEC(integer 3) DREGres(integer 0) BOOT(integer 0) HGroup(varname) SEall ///
-          SAVEres(string) STars ///
+          SAVEres(string) STars NONBuyers(string) ///
           QUARD4(passthru) INISave(passthru) XFIL(passthru) GMODifier(passthru) noTABle ]
 
     * ---- goods and their variables ----
@@ -47,6 +47,16 @@ program define duvm, eclass
             local cf "`cf' `on'"
         }
         local compat "compat"
+    }
+
+    * ---- non-buyers: a buyer is a household whose budget share is positive;
+    * drop (the book) ignores the unit value of a non-buyer whatever its coding,
+    * average gives it the mean of the buyers of its cluster, asis takes the data
+    * as they are (the default under compat, as Deaton's code does)
+    if "`nonbuyers'" == "" local nonbuyers = cond("`compat'" != "", "asis", "drop")
+    if !inlist("`nonbuyers'", "drop", "average", "asis") {
+        di as err "nonbuyers(`nonbuyers') not allowed; use nonbuyers(drop), nonbuyers(average) or nonbuyers(asis)"
+        exit 198
     }
 
     * ---- variance estimator ----
@@ -122,20 +132,42 @@ program define duvm, eclass
     }
     local k : word count `X'
 
-    * ---- estimation sample: shares and regressors non-missing, weight > 0 ----
+    * ---- estimation sample: regressors non-missing, weight > 0 ----
+    * (a missing budget share is a non-buyer: it does not drop the household)
     marksample touse
-    markout `touse' `wvars' `X' `wt' `cluster' `bstrata' `bpsu'
+    markout `touse' `X' `wt' `cluster' `bstrata' `bpsu'
     qui replace `touse' = 0 if `wt' <= 0 | `wt' >= .
     qui count if `touse'
     local N = r(N)
     if `N' == 0 error 2000
+
+    * ---- the shares and unit values the model uses (see _duvm_uv) ----
+    local wnames `wvars'
+    local wvars ""
+    local uvvars ""
+    local nbnotes ""
+    foreach g of local goods {
+        tempvar s`g' u`g'
+        _duvm_uv `g', touse(`touse') wt(`wt') cluster(`cluster') mode(`nonbuyers') share(`s`g'') uv(`u`g'')
+        local wvars `wvars' `s`g''
+        local uvvars `uvvars' `u`g''
+        if r(n_wmiss) > 0 {
+            local nbnotes `"`nbnotes' "(w`g': `=string(r(n_wmiss), "%12.0fc")' missing budget shares read as 0, households that do not buy `g')""'
+        }
+        if r(n_nbuv) > 0 & "`nonbuyers'" == "drop" {
+            local nbnotes `"`nbnotes' "(luv`g': `=string(r(n_nbuv), "%12.0fc")' non-buyers have a unit value in the data, imputed or coded 0; ignored, see nonbuyers())""'
+        }
+        if r(n_nbuv) > 0 & "`nonbuyers'" == "asis" {
+            local nbnotes `"`nbnotes' "(luv`g': the unit values of `=string(r(n_nbuv), "%12.0fc")' non-buyers are used as they are in the data, nonbuyers(asis))""'
+        }
+    }
 
     * ---- selection correction: inverse Mills ratio per good ----
     local lamvars ""
     if `csb' == 1 {
         foreach g of local goods {
             tempvar d xb lam`g'
-            qui gen byte `d' = (w`g' != 0) if `touse'
+            qui gen byte `d' = (`s`g'' > 0) if `touse'
             capture qui probit `d' `X' [pw=`wt'] if `touse'
             if _rc {
                 qui gen double `lam`g'' = 0 if `touse'
@@ -170,13 +202,15 @@ program define duvm, eclass
     if `dregres' == 1 {
         di as txt _n "The cluster fixed-effect regressions (unit values)"
         foreach g of local goods {
-            areg luv`g' `X' [aw=`wt'] if `touse', absorb(`cluster')
+            di as txt _n "log unit value of `g'"
+            areg `u`g'' `X' [aw=`wt'] if `touse', absorb(`cluster')
         }
         di as txt _n "The budget-share regressions"
         foreach g of local goods {
             local lg ""
             if `csb' == 1 local lg `lam`g''
-            areg w`g' `X' `lg' [aw=`wt'] if `touse', absorb(`cluster')
+            di as txt _n "budget share of `g'"
+            areg `s`g'' `X' `lg' [aw=`wt'] if `touse', absorb(`cluster')
         }
     }
 
@@ -192,7 +226,7 @@ program define duvm, eclass
         tempname G
         qui levelsof `hgroup' if `touse', local(glevs)
         local ng : word count `glevs'
-        local gopts hhsize(`hhsize') expend(`expend') cluster(`cluster') csb(`csb') qother(`qother') `nosymmetry'
+        local gopts hhsize(`hhsize') expend(`expend') cluster(`cluster') csb(`csb') qother(`qother') `nosymmetry' nonbuyers(`nonbuyers')
         if "`compatflags'" != "" local gopts `gopts' compatflags(`compatflags')
         else if "`compat'" != "" local gopts `gopts' compat
         foreach o in region subround indcat indcon hweight {
@@ -253,8 +287,14 @@ program define duvm, eclass
     ereturn local cmd "duvm"
     ereturn local cmdline `"duvm `0'"'
     ereturn local estat_cmd "duvm_estat"
+    ereturn local predict "duvm_p"
+    ereturn local expend "`expend'"
+    ereturn local hhsize "`hhsize'"
+    ereturn local indcat "`indcat'"
+    ereturn local indcon "`indcon'"
     ereturn local goods "`goods'"
-    ereturn local depvar "`wvars'"
+    ereturn local depvar "`wnames'"
+    ereturn local nonbuyers "`nonbuyers'"
     ereturn local clustvar "`cluster'"
     ereturn local wtype "`wtype'"
     if "`weight'" != "" ereturn local wexp "`exp'"
@@ -296,6 +336,9 @@ program define duvm, eclass
     if "`hgroup'" != "" {
         ereturn matrix elast_price_own_group = `G'
         ereturn local hgroup "`hgroup'"
+    }
+    foreach l of local nbnotes {
+        di as txt `"`l'"'
     }
     if "`table'" == "" _duvm_display, dec(`dec') `seall' `stars'
     * the tables through tabstars: on screen with stars, and/or into a file
@@ -453,6 +496,8 @@ program define _duvm_display
     if "`e(compatflags)'" != "" di as txt "Mode: " as res "compatflags(`e(compatflags)')"
     else if "`e(compat)'" != "" di as txt "Mode: " as res "compat" as txt " (the formulas of the Stata code published with Deaton, 1997)"
     if "`e(csb)'" != ""    di as txt "Selection correction: inverse Mills ratio in the share equations"
+    if "`e(nonbuyers)'" == "average" di as txt "Non-buyers: unit value = mean of the buyers of the cluster (nonbuyers(average))"
+    if "`e(nonbuyers)'" == "asis"    di as txt "Non-buyers: unit values as in the data (nonbuyers(asis))"
     if "`e(vce)'" == "bootstrap" {
         local bs = "bootstrap, `e(bootstrap)', " + strofreal(e(N_reps)) + " replications"
         if "`e(bpsu)'" != "" & "`e(bpsu)'" != "`e(clustvar)'" local bs "`bs', resampling `e(bpsu)'"

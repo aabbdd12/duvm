@@ -30,6 +30,16 @@ ill-conditioned or non-positive corrected moment matrix, and a symmetry
 restriction that moves the second-stage coefficients a long way. The same
 report is available after estimation with {cmd:estat diagnostics}.
 
+{pstd}
+It starts with the coding of the non-buyers (Table D0). A buyer is a household
+whose budget share is positive; the table counts, good by good, the buyers, the
+budget shares coded missing (read as 0, so that the household stays in the
+model), the non-buyers that have a unit value in the data -- imputed, or coded 0
+-- and the clusters that have a unit value but no buyer, whose price can only
+come from outside the cluster. Each case is also reported as a warning, with
+what {helpb duvm##options:nonbuyers()} does with it: imputed unit values bias
+the quality elasticity toward zero, the more so the rarer the good.
+
 
 {title:Stored results}
 

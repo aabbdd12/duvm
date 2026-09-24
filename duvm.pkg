@@ -22,6 +22,9 @@ f src/_duvm_tabstars.ado
 f src/duvm.sthlp
 f src/duvm.dlg
 f src/duvm_estat.ado
+f src/duvm_p.ado
+f src/_duvm_engel.ado
+f src/_duvm_uv.ado
 f src/duvmdiag.ado
 f src/duvmdiag.sthlp
 f examples/mexico_2014_cereals.dta

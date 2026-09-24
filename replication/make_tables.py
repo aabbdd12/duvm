@@ -144,7 +144,8 @@ labA1 = {"code": "Deaton's published code (\\opt{compat})", "zeta": "+ $\\zeta$ 
          "completion": "+ completion with $\\zeta^x$, not $1/\\zeta^x$",
          "sign": "+ last row of $\\Theta^x$ = $-$colsum (eq. 5.94)",
          "chi": "+ $\\chi$ from eq. (5.82)",
-         "region": "+ region = first non-missing household (the book)"}
+         "region": "+ region = first non-missing household (the book)",
+         "nonbuyers": "+ unit values of non-buyers ignored (default)"}
 lines = ["\\begin{tabular}{lrrrrr}", "\\toprule",
          "Formulas & Corn & Wheat & Rice & Other & All other \\\\", "\\midrule"]
 for r, v in body:

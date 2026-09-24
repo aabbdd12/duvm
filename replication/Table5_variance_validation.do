@@ -58,7 +58,7 @@ foreach case in srs aw svy {
     local first 0
 }
 matrix rownames `T5' = `rn'
-matrix colnames `T5' = `e(goods)' other
+matrix colnames `T5' = `e(goods)' composite
 wcsv table5_ownprice_se `T5'
 matrix rownames `R5' = srs aw svy
 matrix colnames `R5' = min median max parameters

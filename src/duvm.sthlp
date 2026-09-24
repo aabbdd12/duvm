@@ -5,6 +5,7 @@
 {viewerjumpto "Description" "duvm##description"}{...}
 {viewerjumpto "Options" "duvm##options"}{...}
 {viewerjumpto "Remarks" "duvm##remarks"}{...}
+{viewerjumpto "Engel curves" "duvm##engel"}{...}
 {viewerjumpto "Stored results" "duvm##results"}{...}
 {viewerjumpto "Examples" "duvm##examples"}{...}
 {viewerjumpto "References" "duvm##references"}{...}
@@ -26,7 +27,8 @@
 {p 8 8 2}
 {it:goods} is a list of item names; for each item {it:g} the data must contain
 {cmd:w}{it:g}, the budget share, and {cmd:luv}{it:g}, the log of the unit value
-(missing for the households that do not buy the item).
+(the households that do not buy the item have a zero, or missing, share; their
+unit value, missing or not, is ignored: see {opt nonbuyers()}).
 
 {synoptset 24 tabbed}{...}
 {synopthdr}
@@ -40,6 +42,7 @@
 {synopt:{opt reg:ion(varname)}}region: its effect is removed from the cluster averages{p_end}
 {synopt:{opt sub:round(varname)}}survey round: idem{p_end}
 {synopt:{opt csb(1)}}add the inverse Mills ratio of a probit of purchase to the share equations{p_end}
+{synopt:{opt nonb:uyers(mode)}}unit values of the households that do not buy the good: {cmd:drop} (the default), {cmd:average} or {cmd:asis}{p_end}
 {synopt:{opt qoth:er(#)}}quality elasticity assumed for the composite of all other goods; default 0.25{p_end}
 {synopt:{opt nosym:metry}}do not impose the (approximate) Slutsky symmetry{p_end}
 
@@ -146,6 +149,38 @@ with a non-missing value.
 first-stage regressors and adds the inverse Mills ratio to the share equation
 of that good. Households whose Mills ratio cannot be computed leave that
 equation.
+
+{phang}
+{opt nonbuyers(drop|average|asis)} says what to do with the unit values of the
+households that do not buy the good. A {it:buyer} is a household whose budget
+share is positive; a missing budget share is read as 0, so that a household that
+does not buy a good stays in the model whatever the coding of its share (. or
+0). A non-buyer has no unit value (an expenditure of 0 over a quantity of 0), but
+survey files often hold one: a value imputed from the cluster or from a wider
+area, or a 0.
+
+{phang2}
+{cmd:drop}, the default, ignores the unit value of every non-buyer, whatever its
+coding: the unit-value equation is estimated on the buyers, as in Deaton (1997),
+and a cluster without buyers has no price for that good. The households dropped
+from that equation carry no information on quality, since they bought nothing.
+
+{phang2}
+{cmd:average} gives each non-buyer the weighted mean of the unit values of the
+buyers of its cluster (never a value from outside the cluster), the rule of the
+earlier WELCOM data preparation. It biases the quality elasticity toward zero,
+the more so the rarer the good, since the added households carry no
+within-cluster variation of the unit value; it also understates the
+measurement-error variance and inflates the cluster sizes, so that the
+errors-in-variables correction is too small. It is there to reproduce earlier
+results.
+
+{phang2}
+{cmd:asis} takes the unit values as they are in the data, imputed or not; it is
+the default under {opt compat}, as Deaton's code takes the data it is given.
+{cmd:duvmdiag} and {cmd:estat diagnostics} count, good by good, the missing
+shares, the non-buyers that have a unit value (and how many are coded 0), and the
+clusters that have a unit value but no buyer.
 
 {phang}
 {opt qother(#)} is the quality elasticity assumed for the composite "all other
@@ -260,7 +295,93 @@ cluster variance removed by the measurement-error correction, the sign of the
 quality elasticity and the conditioning of the moment matrix, with warnings;
 {helpb duvmdiag} runs the same report before estimating. {cmd:estat elasticities}
 [{cmd:, unrestricted noquality uncompleted}] and {cmd:estat quality} redisplay
-the tables.
+the tables. {cmd:predict} and {cmd:estat engel} give the Engel curves; see
+{help duvm##engel:Engel curves}.
+
+
+{marker engel}{...}
+{title:Engel curves: predict and estat engel}
+
+{p 8 16 2}
+{cmd:predict} [{it:type}] {it:newvar} {ifin}{cmd:,} {c -(}{opt sh:are}|{opt qu:ality}|{opt qua:ntity}{c )-}
+{opt go:od(name)} [{opt atm:eans}|{opt aso:bserved}] [{opt stdp} {opt norm:alize}]
+
+{p 8 16 2}
+{cmd:predict} [{it:type}] {it:stub}{cmd:*} {ifin}{cmd:,} {c -(}{opt sh:are}|{opt qu:ality}|{opt qua:ntity}{c )-}
+[{opt atm:eans}|{opt aso:bserved}] [{opt stdp} {opt norm:alize}]
+
+{p 8 16 2}
+{cmd:estat engel} {ifin} [{cmd:,} {c -(}{opt sh:are}|{opt qu:ality}|{opt qua:ntity}{c )-}
+{opt atm:eans}|{opt aso:bserved} {opt norm:alize} {opt lnx} {opt n(#)} {opt trim(#)} {opt l:evel(#)} {opt noci}
+{opt bw:idth(#)} {opt data(filename)} {opt sav:ing(filename)} {opt nodraw} {it:graph_combine_options}]
+
+{pstd}
+The first stage of {cmd:duvm} regresses, within clusters, the budget share and
+the log unit value of each good on the log of total expenditure {it:x} and the
+other household variables. It therefore gives three Engel curves:
+
+{p2colset 8 20 22 2}{...}
+{p2col:{opt share}}the budget share {it:w}(ln {it:x}), slope {it:b0}; the Engel curve of the budget share{p_end}
+{p2col:{opt quality}}the log unit value ln {it:v}(ln {it:x}), slope {it:b1}; how richer households buy dearer varieties{p_end}
+{p2col:{opt quantity}}the log quantity ln {it:q} = ln {it:w} + ln {it:x} - ln {it:v}, slope 1 + {it:b0}/{it:w} - {it:b1}, the expenditure elasticity of quantity{p_end}
+{p2colreset}{...}
+
+{pstd}
+{opt atmeans}, the default, evaluates the curve at the household's ln {it:x}, the
+other regressors held at their weighted means (over the households that report
+the good for {opt quality}) and prices at their common level: the Engel curve
+itself, a straight line in ln {it:x} for the share and the unit value.
+{opt asobserved} keeps the household's own regressors and the effect of its
+cluster: the fitted value of the first stage. {opt good()} names the good; with
+{it:stub}{cmd:*}, one variable is created per good, {it:stub}{it:good}.
+{opt stdp} is the standard error of the Engel curve ({opt atmeans}), linearized
+over the same design as the estimates (clusters, or the {cmd:svyset} design; after
+{cmd:vce(bootstrap)} the linearization on the bootstrap design); the
+covariances it uses are those of {cmd:e(V)}. It is not available after
+{cmd:vce(none)}, nor, for the share and the quantity, after {cmd:csb(1)}, whose
+share equations also hold the inverse Mills ratio.
+
+{pstd}
+{ul:Units of the quantity curve.} {it:q} = {it:w x} / {it:v} is the expenditure
+of the household on the good divided by its unit value: the quantity bought by
+the household (not per head), over the period of {opt expend()}, in the unit of
+the unit value (kilograms when {cmd:luv}{it:g} is the log of a price per
+kilogram). Two conditions: {opt expend()} must be the denominator of the budget
+shares, otherwise the level is shifted by the ratio of the two; and when the unit
+value of a group of items is an index (a Laspeyres index of the items, as in the
+example data), {it:q} is a quantity index whose level has no physical unit. The
+slope of the curve, the expenditure elasticity of quantity, does not depend on
+units. {opt normalize} sets the log quantity to 0 at the mean of ln {it:x}: the
+curve then reads as the percentage difference in quantity from the household at
+mean expenditure, without units, and the goods can be compared; its standard
+error is 0 at that point by construction.
+
+{pstd}
+The budget share is linear in ln {it:x} (the Working-Leser form of Deaton's
+first stage), so at high or low expenditure it can leave the unit interval: where
+the fitted share is not positive the log quantity is left missing, and a note
+says how many values this concerns. The curves of {helpb easi}, polynomials in
+real expenditure, can bend where these cannot.
+
+{pstd}
+{cmd:estat engel} draws the curve of every good, one panel per good, against the
+percentiles of total expenditure (the layout of {cmd:easi}'s {cmd:estat engel}),
+or against its log with {opt lnx}, with the confidence band of {opt stdp}.
+{opt n()} sets the number of points of the grid, {opt trim()} the percent left
+out at each tail (default 1). With {opt asobserved} the fitted values are
+smoothed by a local linear regression of bandwidth {opt bwidth()} (default: the
+rule of thumb of {helpb lpoly}), without a band. {opt data()} saves the plotted
+curves; {opt nodraw} computes them without drawing. {cmd:estat engel} stores
+{cmd:r(n)}, {cmd:r(curve)} and, with {opt asobserved}, {cmd:r(bwidth)}.
+
+{phang2}{cmd:. predict w_corn, share good(corn)}{p_end}
+{phang2}{cmd:. predict se_w_corn, share good(corn) stdp}{p_end}
+{phang2}{cmd:. predict lnq_*, quantity}{p_end}
+{phang2}{cmd:. estat engel}{p_end}
+{phang2}{cmd:. estat engel, quality lnx}{p_end}
+{phang2}{cmd:. predict lnq_corn, quantity good(corn) normalize}{p_end}
+{phang2}{cmd:. estat engel, quantity normalize}{p_end}
+{phang2}{cmd:. estat engel, quantity level(90) data(engel_q)}{p_end}
 
 
 {marker results}{...}

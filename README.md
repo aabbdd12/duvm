@@ -24,6 +24,9 @@ variation of prices across clusters. Closed-form, written in Mata.
   before estimating;
 * results by group (`hgroup()`), a selection correction (`csb(1)`), `estat`,
   standard `e()` results, a dialog box (`db duvm`);
+* three Engel curves after estimation, with their confidence bands: the budget
+  share, the unit value (quality) and the quantity (`predict ..., share`,
+  `quality`, `quantity`; `estat engel` draws them);
 * `compat`, which reproduces the Stata code published with Deaton (1997)
   (checked against a line-by-line transcription of his programs), and
   `compatflags()` to switch its departures from the book one at a time.
@@ -59,6 +62,7 @@ use mexico_2014_cereals, clear
 duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)
 estat quality
+estat engel
 duvm, stars
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) notable saveres(duvm_results.docx)
 svyset psu [pw=sweight], strata(quintile)
@@ -71,7 +75,8 @@ duvm corn wheat rice other, hhsize(hhsize) expend(hh_current_inc) cluster(psu) r
 ## Layout
 
 ```
-src/          duvm.ado, duvm.sthlp, duvm.dlg, duvm_estat.ado, duvmdiag.ado, duvmdiag.sthlp,
+src/          duvm.ado, duvm.sthlp, duvm.dlg, duvm_estat.ado, duvm_p.ado (predict),
+              _duvm_engel.ado (Engel curves), duvmdiag.ado, duvmdiag.sthlp,
               _duvm_tabstars.ado (private copy of tabstars)
 examples/     mexico_2014_cereals.dta (four cereal groups of the ENIGH 2014),
               duvm_tour.do

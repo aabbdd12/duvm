@@ -1,4 +1,4 @@
-*! master.do — reproduce every table of the technical note of duvm 1.0
+*! master.do — reproduce every table and figure of the technical note of duvm 1.0
 *!
 *! Run from this directory:
 *!     cd replication
@@ -15,7 +15,7 @@ set more off
 if "$BOOT" == "" global BOOT 1
 
 local scripts Table1_2_data_quality Table3_4_elasticities Table7_deciles Table8_timing ///
-    TableA1_corrections TableA2_compat_code Table5_variance_validation Table6_shortcut
+    TableA1_corrections TableA2_compat_code Figure1_3_engel Table5_variance_validation Table6_shortcut
 
 capture mkdir out
 timer clear 9
