@@ -18,6 +18,7 @@ d
 d Distribution-Date: 20260923
 d
 f src/duvm.ado
+f src/_duvm_tabstars.ado
 f src/duvm.sthlp
 f src/duvm.dlg
 f src/duvm_estat.ado

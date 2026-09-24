@@ -39,11 +39,25 @@ duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) /
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
     cluster(psu) region(rururb) indcat(sex educ) indcon(age) csb(1)
 
-* 8. The formulas of the WELCOM version, for the record
+* 8. The formulas of the Stata code published with Deaton (1997), for the record
+*    (unweighted, as his code is), and one of its departures from the book alone
 duvm corn wheat rice other, hhsize(hhsize) expend(hh_current_inc) ///
-    cluster(psu) region(rururb) indcat(sex educ) indcon(age) hweight(sweight) compat
+    cluster(psu) region(rururb) indcat(sex educ) indcon(age) compat vce(none)
+duvm corn wheat rice other, hhsize(hhsize) expend(hh_current_inc) ///
+    cluster(psu) region(rururb) indcat(sex educ) indcon(age) compatflags(sign) vce(none)
 
-* 9. The stored results
+* 9. The tables with significance stars, and the same tables written to a file
+*    (the extension gives the format: .docx .tex .xlsx .csv .md; give a full
+*    path to write elsewhere than the current folder)
+duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
+    cluster(psu) region(rururb) indcat(sex educ) indcon(age) stars
+duvm, stars dec(2)
+duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
+    cluster(psu) region(rururb) indcat(sex educ) indcon(age) notable saveres(duvm_results.docx)
+duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
+    cluster(psu) region(rururb) indcat(sex educ) indcon(age) hgroup(quintile) notable saveres(duvm_results.tex)
+
+* 10. The stored results
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
     cluster(psu) region(rururb) indcat(sex educ) indcon(age) notable
 ereturn list

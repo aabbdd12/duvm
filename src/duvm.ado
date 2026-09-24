@@ -7,7 +7,9 @@ program define duvm, eclass
     version 14.2
     if replay() {
         if "`e(cmd)'" != "duvm" error 301
-        _duvm_display `0'
+        syntax [, DEC(integer -1) SEall STars]
+        _duvm_display, dec(`dec') `seall' `stars'
+        if "`stars'" != "" _duvm_tables "", dec(`dec') screen(1)
         exit
     }
     syntax anything(name=namelist id="goods") [if] [in] [aweight fweight pweight iweight] , ///
@@ -16,6 +18,7 @@ program define duvm, eclass
           HWeight(varname numeric) CSB(integer 0) QOTHer(real 0.25) ///
           NOSYMmetry COMPAT COMPATFlags(string) VCE(string) Level(cilevel) ///
           DEC(integer 3) DREGres(integer 0) BOOT(integer 0) HGroup(varname) SEall ///
+          SAVEres(string) STars ///
           QUARD4(passthru) INISave(passthru) XFIL(passthru) GMODifier(passthru) noTABle ]
 
     * ---- goods and their variables ----
@@ -31,9 +34,12 @@ program define duvm, eclass
 
     * ---- compat flags: 1 zeta formula, 2 completion (reciprocal zeta, syminv),
     * 3 sign of the last row of Theta_x, 4 cluster sizes = sum of weights,
-    * 5 chi from the auxiliary regression, 6 mwegen denominator, 7 region = first household
+    * 5 chi from the auxiliary regression, 6 mwegen denominator, 7 region = first household.
+    * compat = the Stata code published with Deaton (1997, ch. 5): flags 1 2 3 5 7.
+    * Flags 4 and 6 are weighting conventions of the earlier WELCOM implementation
+    * (Deaton's code is unweighted); they stay reachable through compatflags().
     local cf "0 0 0 0 0 0 0"
-    if "`compat'" != "" local cf "1 1 1 1 1 1 1"
+    if "`compat'" != "" local cf "1 1 1 0 1 0 1"
     else if "`compatflags'" != "" {
         local cf ""
         foreach f in zeta completion sign counts chi mean region {
@@ -291,7 +297,107 @@ program define duvm, eclass
         ereturn matrix elast_price_own_group = `G'
         ereturn local hgroup "`hgroup'"
     }
-    if "`table'" == "" _duvm_display, dec(`dec') `seall'
+    if "`table'" == "" _duvm_display, dec(`dec') `seall' `stars'
+    * the tables through tabstars: on screen with stars, and/or into a file
+    local scr = ("`stars'" != "" & "`table'" == "")
+    if `"`saveres'"' != "" | `scr' _duvm_tables `"`saveres'"', dec(`dec') screen(`scr')
+end
+
+* ============================================================================
+* the tables through _duvm_tabstars, the private copy of tabstars shipped with
+* the package (src/_duvm_tabstars.ado, built by tools/make_duvm_tabstars.py):
+* stars renders them on screen (significance stars, Table N / N-b),
+* saveres(file) writes them to one file (the extension gives the format:
+* .docx .tex .xlsx .csv .md). Only the basic layout is used (matrices,
+* standard errors, titles, numbers, decimals): for a different rendering,
+* call the tabstars package on the e() matrices.
+program define _duvm_tables
+    syntax [anything(name=fname)] [, DEC(integer 3) SCREEN(integer 0)]
+    * the file name as typed, quoted or not: one level of quotes is removed here
+    local file `fname'
+    if `dec' < 0 local dec = e(dec)
+    local M = e(M)
+    local goods `e(goods)'
+    local hasV = inlist("`e(vce)'", "bootstrap", "cluster", "svy")
+    local sym = ("`e(symmetry)'" == "approx")
+    tempname T S
+    local show = cond(`screen', "", "nodisplay")
+    if "`file'" != "" _duvm_tabstars export begin using "`file'", replace
+    capture noisily {
+        matrix `T' = e(shares_mean) * 100
+        matrix rownames `T' = "Share"
+        matrix colnames `T' = `goods'
+        if `hasV' {
+            matrix `S' = e(se_shares_mean) * 100
+            _duvm_tab, num(1) title("Average budget shares (in %)") est(`T') se(`S') dec(`dec') nostars `show'
+        }
+        else _duvm_tab, num(1) title("Average budget shares (in %)") est(`T') dec(`dec') `show'
+        matrix `T' = e(elast_exp)
+        matrix rownames `T' = "Elasticity"
+        if `hasV' {
+            matrix `S' = e(se_elast_exp)
+            _duvm_tab, num(2) title("Expenditure elasticities of quantity, e = 1 - b1 + b0/wbar") est(`T') se(`S') dec(`dec') `show'
+        }
+        else _duvm_tab, num(2) title("Expenditure elasticities of quantity, e = 1 - b1 + b0/wbar") est(`T') dec(`dec') `show'
+        matrix `T' = e(elast_qual)
+        matrix rownames `T' = "Elasticity"
+        if `hasV' {
+            matrix `S' = e(se_elast_qual)
+            _duvm_tab, num(3) title("Quality elasticities, b1 = dln(unit value)/dln(expenditure)") est(`T') se(`S') dec(`dec') `show'
+        }
+        else _duvm_tab, num(3) title("Quality elasticities, b1 = dln(unit value)/dln(expenditure)") est(`T') dec(`dec') `show'
+        * the price-elasticity matrices; with a variance each one is followed
+        * by its standard errors (Table N-b), so Table 9 of the screen (the SE
+        * of the final matrix) is Table 8-b (7-b without symmetry)
+        local pt "Price elasticities of quantity"
+        local rt "Quantity of"
+        _duvm_tabm, num(4) title("`pt', unit values taken as prices (no quality correction), unrestricted") est(e(elast_price_noqual)) se(e(se_elast_price_noqual)) dec(`dec') rowtitle("`rt'") hasv(`hasV') `show'
+        _duvm_tabm, num(5) title("`pt', quality corrected, unrestricted, M x M system") est(e(elast_price_M_ns)) se(e(se_elast_price_M_ns)) dec(`dec') rowtitle("`rt'") hasv(`hasV') `show'
+        if `sym' _duvm_tabm, num(6) title("`pt', quality corrected, symmetry restricted, M x M system") est(e(elast_price_M)) se(e(se_elast_price_M)) dec(`dec') rowtitle("`rt'") hasv(`hasV') `show'
+        _duvm_tabm, num(7) title("`pt', quality corrected, unrestricted, completed system") est(e(elast_price_ns)) se(e(se_elast_price_ns)) dec(`dec') rowtitle("`rt'") hasv(`hasV') `show'
+        if `sym' _duvm_tabm, num(8) title("`pt', quality corrected, symmetry restricted, completed system") est(e(elast_price)) se(e(se_elast_price)) dec(`dec') rowtitle("`rt'") hasv(`hasV') `show'
+        if "`e(hgroup)'" != "" {
+            * the group table interleaves elasticity and SE columns: split them
+            local gse = (colsof(e(elast_price_own_group)) == 2 * `M')
+            mata: st_matrix("`T'", st_matrix("e(elast_price_own_group)")[., ((1 + `gse') * (1::`M') :- `gse')'])
+            mata: st_matrixrowstripe("`T'", st_matrixrowstripe("e(elast_price_own_group)"))
+            matrix colnames `T' = `goods'
+            local gt "Own-price elasticities by `e(hgroup)' (the model re-estimated within each group; method of Table `=cond(`sym', 8, 7)')"
+            if `gse' {
+                mata: st_matrix("`S'", st_matrix("e(elast_price_own_group)")[., (2 * (1::`M'))'])
+                _duvm_tab, num(10) title("`gt'") est(`T') se(`S') dec(`dec') rowtitle("`e(hgroup)'") `show'
+            }
+            else _duvm_tab, num(10) title("`gt'") est(`T') dec(`dec') rowtitle("`e(hgroup)'") `show'
+        }
+    }
+    if _rc {
+        local rc = _rc
+        capture _duvm_tabstars export clear
+        if "`file'" != "" di as err "saveres(): the tables could not be written to `file'"
+        exit `rc'
+    }
+    if `screen' _duvm_footnote
+    if "`file'" != "" _duvm_tabstars export end
+end
+
+* one table (and its standard errors) through tabstars
+program define _duvm_tab
+    syntax, num(string) title(string) est(name) [se(name) dec(integer 3) noSTars rowtitle(string) NODISplay]
+    if "`nodisplay'" == "" di ""
+    if "`se'" != "" _duvm_tabstars `est', se(`se') dec(`dec') title(`"`title'"') tabnumber(`num') rowtitle(`"`rowtitle'"') `nodisplay' `stars'
+    else _duvm_tabstars `est', dec(`dec') title(`"`title'"') tabnumber(`num') rowtitle(`"`rowtitle'"') `nodisplay'
+end
+
+* a price-elasticity matrix from e(): copied first (tabstars wants a matrix name)
+program define _duvm_tabm
+    syntax, num(string) title(string) est(string) se(string) [dec(integer 3) hasv(integer 0) rowtitle(string) NODISplay]
+    tempname T S
+    matrix `T' = `est'
+    if `hasv' {
+        matrix `S' = `se'
+        _duvm_tab, num(`num') title(`"`title'"') est(`T') se(`S') dec(`dec') rowtitle(`"`rowtitle'"') `nodisplay'
+    }
+    else _duvm_tab, num(`num') title(`"`title'"') est(`T') dec(`dec') rowtitle(`"`rowtitle'"') `nodisplay'
 end
 
 * ============================================================================
@@ -331,7 +437,7 @@ end
 
 * ============================================================================
 program define _duvm_display
-    syntax [, DEC(integer 3) SEall]
+    syntax [, DEC(integer 3) SEall STars]
     if `dec' < 0 local dec = e(dec)
     local M = e(M)
     local cw = `dec' + 5
@@ -344,7 +450,8 @@ program define _duvm_display
     di as txt "Cluster variable: " as res "`e(clustvar)'" as txt _col(49) "Weights" _col(67) "= " as res "`wtxt'"
     local sy = cond("`e(symmetry)'" == "approx", "imposed (Deaton's approximation)", "not imposed")
     di as txt "Symmetry: " as res "`sy'" as txt _col(49) "Quality elast., other goods = " as res %5.3f e(qother)
-    if "`e(compat)'" != "" di as txt "Mode: " as res "compat" as txt " (reproduces the WELCOM duvm formulas)"
+    if "`e(compatflags)'" != "" di as txt "Mode: " as res "compatflags(`e(compatflags)')"
+    else if "`e(compat)'" != "" di as txt "Mode: " as res "compat" as txt " (the formulas of the Stata code published with Deaton, 1997)"
     if "`e(csb)'" != ""    di as txt "Selection correction: inverse Mills ratio in the share equations"
     if "`e(vce)'" == "bootstrap" {
         local bs = "bootstrap, `e(bootstrap)', " + strofreal(e(N_reps)) + " replications"
@@ -361,10 +468,11 @@ program define _duvm_display
         di as txt "Std. err.: " as res "`bs')"
     }
 
-    * the tables follow the order of the WELCOM version (01-09); their titles
-    * say what each one holds (WELCOM's 04-05 are quality corrected too: what
-    * distinguishes them from 06-07 is the completion of the system)
+    * the tables: 1-3 shares and expenditure/quality elasticities, 4 E without
+    * quality correction, 5-6 the quality-corrected M x M system, 7-8 the
+    * completed system (unrestricted, symmetry restricted), 9 SE, 10 by group
     local sym = ("`e(symmetry)'" == "approx")
+    if "`stars'" != "" exit
     tempname T
     if `hasV' {
         matrix `T' = e(shares_mean) * 100 \ e(se_shares_mean) * 100
@@ -437,6 +545,10 @@ program define _duvm_display
         di _n as txt "Table 10: Own-price elasticities by `e(hgroup)' (the model re-estimated within each group; method of Table " cond(`sym', "8", "7") ")"
         matlist e(elast_price_own_group), border(rows) format(`fmt') twidth(14) left(2)
     }
+    _duvm_footnote
+end
+
+program define _duvm_footnote
     di as txt _n "Rows: quantity of the good; columns: price of the good. In the completed system the last row and"
     di as txt "column are the composite of all other goods. Tables 5-8 use the quality parameter of Deaton (1997, eq. 5.92)."
 end
@@ -667,7 +779,7 @@ struct duvm_c scalar _duvm_stage1(struct duvm_d scalar d, real rowvector cf)
 }
 
 // value of a household-level variable at the cluster level: the first
-// non-missing value in the cluster (compat: the first household, as WELCOM)
+// non-missing value in the cluster (compat: the first household, as Deaton's code)
 real colvector _duvm_clval(real colvector v, real matrix info, real scalar compat)
 {
     real colvector out, x
@@ -1281,7 +1393,7 @@ void _duvm_b(string scalar Rname, string scalar goods, string scalar bname, stri
 
     p = findexternal(Rname); r = *p
     M = r.M
-    g = tokens(goods); gx = (g, "other")
+    g = tokens(goods); gx = (g, "composite")
     cs = _duvm_stripes(M, g, gx)
     st_matrix(bname, _duvm_bvec(r))
     st_matrixcolstripe(bname, cs)
@@ -1319,7 +1431,7 @@ void _duvm_post(string scalar Rname, string scalar goods, string scalar Xnames)
 
     p = findexternal(Rname); r = *p
     M = r.M
-    g = tokens(goods); gx = (g, "other")
+    g = tokens(goods); gx = (g, "composite")
     xn = tokens(Xnames)
 
     st_numscalar("e(N_clust)", r.C)

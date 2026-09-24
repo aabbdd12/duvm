@@ -56,11 +56,14 @@
 {synopt:{opt seall}}display the standard errors after every price-elasticity table, not only after the final one{p_end}
 {synopt:{opt dreg:res(1)}}display the first-stage regressions{p_end}
 {synopt:{opt notab:le}}suppress the tables{p_end}
+{synopt:{opt st:ars}}tables with significance stars on the estimates, the standard errors of each table as Table {it:N}-b{p_end}
+{synopt:{opt saveres(filename)}}write the tables to a file; the extension gives the format: {cmd:.docx}, {cmd:.tex}, {cmd:.xlsx}, {cmd:.csv}, {cmd:.md}{p_end}
 
 {syntab:Compatibility}
 {synopt:{opt hw:eight(varname)}}sampling weight, as an analytic weight (WELCOM syntax){p_end}
 {synopt:{opt boot(#)}}same as {cmd:vce(bootstrap, reps(}{it:#}{cmd:))}{p_end}
-{synopt:{opt compat}}reproduce the formulas of the WELCOM/posted-code version; see {help duvm##compat:Remarks}{p_end}
+{synopt:{opt compat}}reproduce the Stata code published with Deaton (1997); see {help duvm##compat:Remarks}{p_end}
+{synopt:{opt compatf:lags(list)}}reproduce only some of its departures from the book; see {help duvm##compat:Remarks}{p_end}
 {synoptline}
 {p 4 6 2}* required.{p_end}
 
@@ -177,8 +180,9 @@ group, with their standard errors.
 {dlgtab:Compatibility}
 
 {phang}
-{opt hweight(varname)} and {opt boot(#)} keep the syntax of the WELCOM
-version of the command. {opt compat} switches to its formulas; see below.
+{opt hweight(varname)} and {opt boot(#)} keep the syntax of the earlier WELCOM
+version of the command. {opt compat} switches to the formulas of the Stata code
+published with Deaton (1997); see below.
 
 
 {marker remarks}{...}
@@ -199,15 +203,23 @@ expenditure and quality elasticities, zeta, and the five price-elasticity
 matrices; the tables show the standard errors of the final matrix, {opt seall}
 shows them after every matrix, and {cmd:estat elasticities} shows those of the
 variant it displays.
-The tables follow the order of the WELCOM version: 1 budget shares, 2
+The tables are numbered as follows: 1 budget shares, 2
 expenditure elasticities, 3 quality elasticities, 4 E with the unit values
 taken as prices (no quality correction), 5-6 the quality-corrected M x M
 system, unrestricted and symmetry restricted, 7-8 the completed system,
 unrestricted and symmetry restricted (8 is the final matrix), 9 the standard
-errors of Table 8, 10 the own-price elasticities by group. The last row and
-column of the completed tables are the composite of all other goods. (The
-WELCOM titles called its Tables 04-05 "without quality correction"; they were
-quality corrected, and differed from 06-07 by the completion of the system.)
+errors of Table 8, 10 the own-price elasticities by group. {opt stars} renders
+the same tables with significance stars on the estimates, each table with a
+variance followed by its standard errors as Table {it:N}-b, so Table 9 is not
+repeated; {opt saveres(filename)} writes exactly these tables to one file
+(Word, LaTeX with its preamble, Excel with the values as numbers, CSV,
+Markdown), with or without {opt stars} on screen. Both work on replay:
+{cmd:duvm, stars}. The tables are built by a private copy of the
+{cmd:tabstars} command shipped with the package ({cmd:_duvm_tabstars.ado});
+for other layouts (levels, symbols, labels, column groups) install the
+{cmd:tabstars} package and call it on the {cmd:e()} matrices. The last row and
+column of the completed tables are the composite of all other goods, named
+{cmd:composite} in the matrices and in {cmd:e(b)}.
 
 {pstd}
 {ul:Cluster sizes.} The measurement-error correction divides the residual
@@ -218,16 +230,28 @@ constant within the cluster.
 
 {marker compat}{...}
 {pstd}
-{ul:compat.} The Stata code published with Deaton (1997) and the WELCOM
-{cmd:duvm} built on it differ from the book in four places: the quality
-parameter is computed as {it:b1}/({it:b0} + 1 - {it:b1 wbar}) instead of eq.
-(5.92); the completed system uses the reciprocal of zeta, obtained through
-{cmd:syminv(diag(b1))}, which also drops the correction of any good with a
-negative {it:b1}; the last row of the completed Theta is +colsum instead of
--colsum (eq. 5.94); and the WELCOM version counts a cluster's size as the sum of
-its weights. {opt compat} reproduces all of this, so that earlier results can be
-recovered; the default follows the book. No analytic variance is available
-under {opt compat}.
+{ul:compat.} The Stata code published with Deaton (1997, ch. 5; programs
+{it:allindia.do} and {it:mkmats.do} on the World Bank LSMS site) departs from
+the book's equations in three places: the quality parameter is computed as
+{it:b1}/({it:b0} + 1 - {it:b1 wbar}) instead of eq. (5.92); the completed system
+uses the reciprocal of zeta, obtained through {cmd:syminv(diag(b1))}, which also
+drops the correction of any good with a negative {it:b1}; and the last row of
+the completed Theta is +colsum instead of -colsum (eq. 5.94). It also follows
+two conventions: the covariance of the first-stage residuals comes from an
+auxiliary regression, and the region of a cluster is that of its first
+household. {opt compat} reproduces the code, so that results computed with it can
+be recovered: on unweighted data {cmd:duvm, compat} matches a line-by-line
+transcription of Deaton's programs to 1e-9. The code is unweighted; with weights,
+{opt compat} keeps its formulas and applies the weights as the default does.
+The default follows the book. No analytic variance is available under
+{opt compat}.
+
+{pstd}
+{opt compatflags(list)} reproduces only the departures listed, among {cmd:zeta},
+{cmd:completion}, {cmd:sign}, {cmd:chi} and {cmd:region} ({opt compat} is all
+five), which shows the effect of each. Two more flags reproduce the weighting of
+the earlier WELCOM implementation: {cmd:counts} (the size of a cluster is the
+sum of its weights) and {cmd:mean} (its cluster averages).
 
 {pstd}
 {ul:After estimation.} {cmd:estat diagnostics} reports, good by good, the
@@ -282,7 +306,7 @@ the tables.
 {synopt:{cmd:e(Psi)}}, {cmd:e(Theta)}, {cmd:e(Psi_x)}, {cmd:e(Theta_x)}}quality and share responses to prices{p_end}
 {synopt:{cmd:e(G)}}, {cmd:e(V_eta)}}Jacobian and variance of the moments (linearized){p_end}
 {synopt:{cmd:e(boot_b)}}the bootstrap replications{p_end}
-{synopt:{cmd:e(elprice)}}, {cmd:e(elincome)}}the matrices of the WELCOM version{p_end}
+{synopt:{cmd:e(elprice)}}, {cmd:e(elincome)}}the same as {cmd:e(elast_price_M)} and {cmd:e(elast_exp)}, under the names of the earlier WELCOM version{p_end}
 
 
 {marker examples}{...}
@@ -301,6 +325,10 @@ the tables.
 {pstd}Bootstrap of both stages, and by decile{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) vce(bootstrap, reps(500) seed(1))}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) hgroup(decile)}{p_end}
+
+{pstd}The tables with significance stars, on screen and in a Word file{p_end}
+{phang2}{cmd:. duvm, stars}{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) saveres(duvm_results.docx)}{p_end}
 
 {pstd}Before estimating a larger system{p_end}
 {phang2}{cmd:. duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)}{p_end}

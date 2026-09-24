@@ -26,7 +26,8 @@ reduces the two bootstrap scripts from 400 to 40 replications.
 | `Table6_shortcut.do` | Table 6 (bootstrap of both stages against Deaton's shortcut) |
 | `Table7_deciles.do` | Table 7 (own-price elasticities by quintile; the decile run is kept in `out/table7_deciles10.csv`) |
 | `Table8_timing.do` | Table 8 (execution times; the WELCOM rows need the WELCOM files, otherwise they stay missing) |
-| `TableA1_corrections.do` | Table A1 (from the WELCOM formulas to the book, one correction at a time) |
-| `TableA2_compat_lock.do` | Table A2 (`duvm, compat` against the frozen WELCOM output; needs `tests/lock`, otherwise skipped) |
+| `TableA1_corrections.do` | Table A1 (from the Stata code published with Deaton (1997) to the book, one correction at a time) |
+| `TableA2_compat_code.do` | Table A2 (`duvm, compat` against `deaton_1997_ch5.do`, a line-by-line transcription of Deaton's programs) |
+| `deaton_1997_ch5.do` | Deaton's `allindia.do` and `mkmats.do`, transcribed for the Mexican data (used by Table A2) |
 
 `_setup.do` holds the common preamble (paths, the model, a CSV writer).

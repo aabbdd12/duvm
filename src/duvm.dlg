@@ -1,95 +1,103 @@
 /*
     duvm.dlg  —  dialog for duvm 1.0 (Deaton's unit-value model)
     db duvm
+
+    Tabs, as in Stata's estimation dialogs:
+      Model       goods, required variables, purged effects, characteristics
+      Model 2     quality, symmetry, selection correction, Deaton's published code
+      if/in       standard include (ifin)
+      Weights     standard include (weights_fpai: fweight pweight aweight iweight)
+      SE/Robust   linearized (cluster, svy), bootstrap (strata, psu, svy, shortcut), none
+      Reporting   level, decimals, stars, seall, first stage, groups, no table,
+                  tables saved to a file (saveres)
+    Not exposed: hweight() and boot() (WELCOM synonyms of Weights and of the
+    bootstrap), compatflags() (audit), and the ignored WELCOM options.
 */
 VERSION 14.0
 INCLUDE _std_large
 DEFINE _dlgwd 700
-DEFINE _dlght 330
+DEFINE _dlght 340
 INCLUDE header
 HELP hlp1, view("help duvm")
 RESET res1
 
-DIALOG main, label("duvm — Deaton's unit-value model") tabtitle("Main")
+// the bootstrap controls, the svyset box and seall follow the SE/Robust choice
+SCRIPT POSTINIT
 BEGIN
-  GROUPBOX gb_goods    10   10  640  75, label("Goods")
-  TEXT     tx_goods    20   30  600   ., label("Item names (the data hold w<item> and luv<item> for each):")
-  EDIT     ed_goods    20   50  600   ., label("goods")
-
-  GROUPBOX gb_vars     10   95  310 140, label("Required variables")
-  TEXT     tx_hhsize   20  115  140   ., label("Household size:")
-  VARNAME  vn_hhsize  165  115  150   ., label("hhsize") option(hhsize)
-  TEXT     tx_expend   20  145  140   ., label("Total expenditure:")
-  VARNAME  vn_expend  165  145  150   ., label("expend") option(expend)
-  TEXT     tx_cluster  20  175  140   ., label("Cluster (prices constant):")
-  VARNAME  vn_cluster 165  175  150   ., label("cluster") option(cluster)
-  TEXT     tx_region   20  205  140   ., label("Region (optional):")
-  VARNAME  vn_region  165  205  150   ., label("region") option(region)
-
-  GROUPBOX gb_x       340   95  310 140, label("Household characteristics")
-  TEXT     tx_indcat  350  115  290   ., label("Categorical (entered as dummies):")
-  VARLIST  vl_indcat  350  135  290   ., label("indcat") option(indcat)
-  TEXT     tx_indcon  350  165  290   ., label("Continuous:")
-  VARLIST  vl_indcon  350  185  290   ., label("indcon") option(indcon)
-  TEXT     tx_sub     350  210   90   ., label("Survey round:")
-  VARNAME  vn_sub     445  210  195   ., label("subround") option(subround)
-
-  GROUPBOX gb_w        10  245  640  60, label("Weights")
-  TEXT     tx_wtype    20  265   60   ., label("Type:")
-  COMBOBOX cb_wtype    80  265  110   ., dropdownlist contents(wtypes) values(wvals) default(aweight)
-  TEXT     tx_wvar    210  265   60   ., label("Variable:")
-  VARNAME  vn_wvar    275  265  200   ., label("weight")
+  program init_state
+END
+PROGRAM init_state
+BEGIN
+  if se.rb_boot {
+    call script se_on
+  }
+  if !se.rb_boot {
+    call script se_off
+  }
 END
 
-LIST wtypes
+DIALOG main, label("duvm — Deaton's unit-value model") tabtitle("Model")
 BEGIN
-  (none)
-  aweight
-  pweight
-  fweight
-  iweight
-END
-LIST wvals
-BEGIN
-  none
-  aweight
-  pweight
-  fweight
-  iweight
+  GROUPBOX gb_goods    10   10  640  70, label("Goods")
+  TEXT     tx_goods    20   30  620   ., label("Item names (the data hold w<item>, the budget share, and luv<item>, the log unit value):")
+  EDIT     ed_goods    20   50  620   ., label("Goods")
+
+  GROUPBOX gb_vars     10   90  310 120, label("Required variables")
+  TEXT     tx_hhsize   20  110  140   ., label("Household size:")
+  VARNAME  vn_hhsize  165  110  145   ., label("Household size") numeric option(hhsize)
+  TEXT     tx_expend   20  140  140   ., label("Total expenditure:")
+  VARNAME  vn_expend  165  140  145   ., label("Total expenditure") numeric option(expend)
+  TEXT     tx_cluster  20  170  140   ., label("Cluster (prices constant):")
+  VARNAME  vn_cluster 165  170  145   ., label("Cluster") option(cluster)
+
+  GROUPBOX gb_x       340   90  310 120, label("Household characteristics")
+  TEXT     tx_indcat  350  110  290   ., label("Categorical (entered as dummies):")
+  VARLIST  vl_indcat  350  130  290   ., label("Categorical characteristics") option(indcat)
+  TEXT     tx_indcon  350  160  290   ., label("Continuous:")
+  VARLIST  vl_indcon  350  180  290   ., label("Continuous characteristics") numeric option(indcon)
+
+  GROUPBOX gb_purge    10  220  640  65, label("Effects removed from the cluster averages (optional)")
+  TEXT     tx_region   20  245   60   ., label("Region:")
+  VARNAME  vn_region   85  245  200   ., label("Region") option(region)
+  TEXT     tx_sub     340  245   90   ., label("Survey round:")
+  VARNAME  vn_sub     435  245  205   ., label("Survey round") option(subround)
 END
 
-DIALOG opts, tabtitle("Model options")
+DIALOG opts, tabtitle("Model 2")
 BEGIN
-  GROUPBOX gb_q        10   10  640  95, label("Quality and symmetry")
-  TEXT     tx_qother   20   30  400   ., label("Quality elasticity assumed for the composite of all other goods:")
-  EDIT     ed_qother  430   30   80   ., label("qother") default(0.25) option(qother) numonly
-  CHECKBOX ck_nosym    20   60  400   ., label("Do not impose the (approximate) Slutsky symmetry") option(nosymmetry)
-  CHECKBOX ck_csb      20   80  600   ., label("Selection correction: inverse Mills ratio of a probit of purchase in the share equations")
+  GROUPBOX gb_q        10   10  640 105, label("Quality, symmetry and selection")
+  TEXT     tx_qother   20   30  440   ., label("Quality elasticity assumed for the composite of all other goods:")
+  EDIT     ed_qother  470   30   80   ., label("qother") default(0.25) numonly option(qother)
+  CHECKBOX ck_nosym    20   60  600   ., label("Do not impose the (approximate) Slutsky symmetry") option(nosymmetry)
+  CHECKBOX ck_csb      20   85  600   ., label("Selection correction: inverse Mills ratio of a probit of purchase in the share equations")
 
-  GROUPBOX gb_r        10  115  640  95, label("Reporting")
-  TEXT     tx_hgroup   20  135  260   ., label("Re-estimate within the groups of:")
-  VARNAME  vn_hgroup  290  135  200   ., label("hgroup") option(hgroup)
-  TEXT     tx_dec      20  165  260   ., label("Decimals displayed:")
-  SPINNER  sp_dec     290  165   60   ., label("dec") min(0) max(8) default(3) option(dec)
-  CHECKBOX ck_dreg     20  185  400   ., label("Display the first-stage regressions")
-
-  GROUPBOX gb_c        10  220  640  50, label("Compatibility")
-  CHECKBOX ck_compat   20  240  600   ., label("Reproduce the formulas of the WELCOM version (compat)") option(compat)
+  GROUPBOX gb_c        10  125  640  75, label("Published code")
+  CHECKBOX ck_compat   20  145  600   ., label("Reproduce the Stata code published with Deaton (1997) (compat)") option(compat)
+  TEXT     tx_compat   40  170  600   ., label("Deaton's code is unweighted; with weights its formulas are kept and the weights applied as by default.")
 END
+
+INCLUDE ifin
+INCLUDE weights_fpai
 
 DIALOG se, tabtitle("SE/Robust")
 BEGIN
-  GROUPBOX gb_v        10   10  640 160, label("Variance estimator")
-  RADIO    rb_cluster  20   30  400   ., first label("Linearized, clustered by the price cluster (default)") onclickon(script se_off)
-  RADIO    rb_svy      20   50  400   ., label("Linearized, survey design from svyset") onclickon(script se_off)
-  RADIO    rb_boot     20   70  400   ., label("Design bootstrap of both stages") onclickon(script se_on)
-  RADIO    rb_none     20   90  400   ., last label("None") onclickon(script se_off)
-  TEXT     tx_reps     40  115  140   ., label("Replications:")
-  EDIT     ed_reps    185  115   80   ., label("reps") default(200) numonly
-  TEXT     tx_seed    290  115   60   ., label("Seed:")
-  EDIT     ed_seed    350  115   80   ., label("seed") numonly
-  CHECKBOX ck_bsvy     40  140  260   ., label("Strata and PSUs from svyset")
-  CHECKBOX ck_short   310  140  300   ., label("Deaton's shortcut (second stage only)")
+  GROUPBOX gb_v        10   10  640 245, label("Variance estimator")
+  RADIO    rb_cluster  20   30  600   ., first label("Linearized, clustered by the price cluster (default)") onclickon(script se_off)
+  RADIO    rb_svy      20   52  600   ., label("Linearized, survey design declared by svyset (PSU, strata, FPC, weight)") onclickon(script se_off)
+  RADIO    rb_boot     20   74  600   ., label("Design bootstrap of both stages") onclickon(script se_on)
+  RADIO    rb_none     20   96  600   ., last label("None (point estimates only)") onclickon(script se_off)
+
+  TEXT     tx_reps     40  125  110   ., label("Replications:")
+  EDIT     ed_reps    155  125   80   ., label("Replications") default(200) numonly
+  TEXT     tx_seed    270  125   50   ., label("Seed:")
+  EDIT     ed_seed    325  125   80   ., label("Seed") numonly
+  CHECKBOX ck_bsvy     40  155  560   ., label("PSU, strata and weight from svyset") onclickon(script bsvy_on) onclickoff(script bsvy_off)
+  TEXT     tx_strata   40  182  110   ., label("Strata:")
+  VARNAME  vn_strata  155  182  170   ., label("Strata")
+  TEXT     tx_psu     345  182   95   ., label("Resampled unit:")
+  VARNAME  vn_psu     445  182  170   ., label("Resampled unit")
+  TEXT     tx_psunote 155  205  470   ., label("(default: the price cluster)")
+  CHECKBOX ck_short    40  228  560   ., label("Deaton's shortcut (the cluster-level file only; first stage held fixed)")
 END
 
 SCRIPT se_on
@@ -100,6 +108,8 @@ BEGIN
   se.ed_seed.enable
   se.ck_bsvy.enable
   se.ck_short.enable
+  program bsvy_state
+  rpt.ck_seall.enable
 END
 SCRIPT se_off
 BEGIN
@@ -109,9 +119,71 @@ BEGIN
   se.ed_seed.disable
   se.ck_bsvy.disable
   se.ck_short.disable
+  se.tx_strata.disable
+  se.vn_strata.disable
+  se.tx_psu.disable
+  se.vn_psu.disable
+  se.tx_psunote.disable
+  program seall_state
+END
+SCRIPT bsvy_on
+BEGIN
+  se.tx_strata.disable
+  se.vn_strata.disable
+  se.tx_psu.disable
+  se.vn_psu.disable
+  se.tx_psunote.disable
+END
+SCRIPT bsvy_off
+BEGIN
+  program bsvy_state
+END
+PROGRAM bsvy_state
+BEGIN
+  if se.rb_boot & !se.ck_bsvy {
+    call se.tx_strata.enable
+    call se.vn_strata.enable
+    call se.tx_psu.enable
+    call se.vn_psu.enable
+    call se.tx_psunote.enable
+  }
+  if !se.rb_boot | se.ck_bsvy {
+    call script bsvy_on
+  }
+END
+PROGRAM seall_state
+BEGIN
+  if se.rb_none {
+    call rpt.ck_seall.disable
+  }
+  if !se.rb_none {
+    call rpt.ck_seall.enable
+  }
 END
 
-INCLUDE ifin
+DIALOG rpt, tabtitle("Reporting")
+BEGIN
+  GROUPBOX gb_disp     10   10  640 150, label("Display")
+  DEFINE _x 20
+  DEFINE _cx 150
+  DEFINE _y 30
+  INCLUDE _sp_level
+  TEXT     tx_dec     280   30  120   ., label("Decimals:")
+  SPINNER  sp_dec     405   30   60   ., label("Decimals") min(0) max(8) default(3) option(dec)
+  CHECKBOX ck_stars    20   58  610   ., label("Significance stars on the estimates, standard errors as Table N-b (stars)") option(stars)
+  CHECKBOX ck_seall    20   80  610   ., label("Standard errors after every price-elasticity table (seall)") option(seall)
+  CHECKBOX ck_dreg     20  102  610   ., label("Display the first-stage regressions")
+  CHECKBOX ck_notab    20  124  610   ., label("Do not display the tables (the results stay in e())") option(notable)
+
+  GROUPBOX gb_grp      10  170  640  55, label("Results by group")
+  TEXT     tx_hgroup   20  192  250   ., label("Re-estimate within the groups of:")
+  VARNAME  vn_hgroup  275  192  200   ., label("Groups") option(hgroup)
+
+  GROUPBOX gb_save     10  235  640  70, label("Save the tables")
+  TEXT     tx_save     20  255  620   ., label("File (the extension gives the format: .docx .tex .xlsx .csv .md):")
+  FILE     fi_save     20  275  620   ., label("Browse...") save option(saveres) ///
+           filter("Word (*.docx)|*.docx|LaTeX (*.tex)|*.tex|Excel (*.xlsx)|*.xlsx|CSV (*.csv)|*.csv|Markdown (*.md)|*.md")
+END
 
 PROGRAM command
 BEGIN
@@ -119,9 +191,7 @@ BEGIN
   require main.ed_goods
   put main.ed_goods
   put " " /program ifin_output
-  if main.cb_wtype.isneq("none") & main.vn_wvar {
-    put " [" main.cb_wtype "=" main.vn_wvar "]"
-  }
+  put " " /program weights_output
   beginoptions
     require main.vn_hhsize
     optionarg main.vn_hhsize
@@ -133,19 +203,10 @@ BEGIN
     optionarg main.vn_sub
     optionarg main.vl_indcat
     optionarg main.vl_indcon
-    if !opts.ed_qother.isdefault() {
-      optionarg opts.ed_qother
-    }
+    optionarg /hidedefault opts.ed_qother
     option opts.ck_nosym
     if opts.ck_csb {
       put " csb(1)"
-    }
-    optionarg opts.vn_hgroup
-    if !opts.sp_dec.isdefault() {
-      optionarg opts.sp_dec
-    }
-    if opts.ck_dreg {
-      put " dregres(1)"
     }
     option opts.ck_compat
     if se.rb_svy {
@@ -155,6 +216,7 @@ BEGIN
       put " vce(none)"
     }
     if se.rb_boot {
+      require se.ed_reps
       put " vce(bootstrap, reps(" se.ed_reps ")"
       if se.ed_seed {
         put " seed(" se.ed_seed ")"
@@ -162,10 +224,28 @@ BEGIN
       if se.ck_bsvy {
         put " svy"
       }
+      if !se.ck_bsvy & se.vn_strata {
+        put " strata(" se.vn_strata ")"
+      }
+      if !se.ck_bsvy & se.vn_psu {
+        put " psu(" se.vn_psu ")"
+      }
       if se.ck_short {
         put " shortcut"
       }
       put ")"
     }
+    optionarg /hidedefault rpt.sp_level
+    optionarg /hidedefault rpt.sp_dec
+    option rpt.ck_stars
+    if !se.rb_none {
+      option rpt.ck_seall
+    }
+    if rpt.ck_dreg {
+      put " dregres(1)"
+    }
+    option rpt.ck_notab
+    optionarg rpt.vn_hgroup
+    optionarg /quoted rpt.fi_save
   endoptions
 END

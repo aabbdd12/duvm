@@ -140,10 +140,10 @@ tex("tab_timing", "\n".join(lines) + "\n")
 
 # ---- Table A1: corrections one at a time ------------------------------------
 head, body = read("tableA1_corrections")
-labA1 = {"welcom": "WELCOM formulas (all)", "zeta": "+ $\\zeta$ of eq. (5.92)",
+labA1 = {"code": "Deaton's published code (\\opt{compat})", "zeta": "+ $\\zeta$ of eq. (5.92)",
          "completion": "+ completion with $\\zeta^x$, not $1/\\zeta^x$",
-         "sign": "+ last row of $\\Theta^x$ = $-$colsum", "counts": "+ effective cluster sizes",
-         "chi": "+ $\\chi$ from eq. (5.82)", "mean": "+ cluster means over the observed households",
+         "sign": "+ last row of $\\Theta^x$ = $-$colsum (eq. 5.94)",
+         "chi": "+ $\\chi$ from eq. (5.82)",
          "region": "+ region = first non-missing household (the book)"}
 lines = ["\\begin{tabular}{lrrrrr}", "\\toprule",
          "Formulas & Corn & Wheat & Rice & Other & All other \\\\", "\\midrule"]
@@ -152,16 +152,14 @@ for r, v in body:
 lines += ["\\bottomrule", "\\end{tabular}"]
 tex("tab_corrections", "\n".join(lines) + "\n")
 
-# ---- Table A2: compat lock --------------------------------------------------
-if os.path.exists(os.path.join(OUT, "tableA2_compat_lock.csv")):
-    head, body = read("tableA2_compat_lock")
-    lab = {"w_region": "weights, region", "unw_region": "unweighted, region", "w_noregion": "weights, no region",
-           "w_region_csb": "weights, region, \\opt{csb(1)}", "w_region_con": "weights, region, continuous controls"}
-    lines = ["\\begin{tabular}{lrr}", "\\toprule",
-             "Case & Moments and coefficients & Elasticities \\\\", "\\midrule"]
-    for r, v in body:
-        lines.append(f"{lab.get(r, esc(r))} & {v[0]:.1e} & {v[1]:.1e} \\\\")
-    lines += ["\\bottomrule", "\\end{tabular}"]
-    tex("tab_lock", "\n".join(lines) + "\n")
+# ---- Table A2: compat against the transcribed code ---------------------------
+head, body = read("tableA2_compat_code")
+lab = {"region": "region purged", "noregion": "no region"}
+lines = ["\\begin{tabular}{lrr}", "\\toprule",
+         "Case & Moments and coefficients & Elasticities \\\\", "\\midrule"]
+for r, v in body:
+    lines.append(f"{lab.get(r, esc(r))} & {v[0]:.1e} & {v[1]:.1e} \\\\")
+lines += ["\\bottomrule", "\\end{tabular}"]
+tex("tab_lock", "\n".join(lines) + "\n")
 
 print("tables written to", TEX)

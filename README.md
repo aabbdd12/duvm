@@ -24,8 +24,9 @@ variation of prices across clusters. Closed-form, written in Mata.
   before estimating;
 * results by group (`hgroup()`), a selection correction (`csb(1)`), `estat`,
   standard `e()` results, a dialog box (`db duvm`);
-* `compat`, which reproduces the formulas of the earlier WELCOM implementation
-  to float precision, and `compatflags()` to switch them one at a time.
+* `compat`, which reproduces the Stata code published with Deaton (1997)
+  (checked against a line-by-line transcription of his programs), and
+  `compatflags()` to switch its departures from the book one at a time.
 
 Every variance is validated against the bootstrap under simple random sampling
 of clusters, sampling weights and a stratified design; the technical note in
@@ -38,7 +39,9 @@ net install duvm, from("https://raw.githubusercontent.com/aabbdd12/duvm/main") r
 net get duvm          // the example data and the guided tour
 ```
 
-Stata 14.2 or later.
+Stata 14.2 or later, nothing else: the `stars` and `saveres()` tables are
+built by a private copy of the `tabstars` command
+shipped with the package.
 
 ## Quick start
 
@@ -49,6 +52,8 @@ duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_in
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
     cluster(psu) region(rururb) indcat(sex educ) indcon(age)
 estat quality
+duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
+    cluster(psu) region(rururb) indcat(sex educ) indcon(age) stars saveres(duvm_results.docx)
 svyset psu [pw=sweight], strata(quintile)
 duvm corn wheat rice other, hhsize(hhsize) expend(hh_current_inc) cluster(psu) ///
     region(rururb) indcat(sex educ) indcon(age) vce(svy)
