@@ -1,5 +1,7 @@
 # Estimating Deaton's unit-value model: the duvm Stata module
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22938259.svg)](https://doi.org/10.5281/zenodo.22938259)
+
 `duvm` estimates the unit-value model of Deaton (1988, 1990, 1997 ch. 5):
 own- and cross-price elasticities of quantity, expenditure elasticities and
 quality elasticities for a group of goods, from the budget shares and the unit
@@ -88,8 +90,12 @@ stata.toc, duvm.pkg    net-install manifest
 ## Citing
 
 Araar, A. (2026). *Estimating Deaton's unit-value model: the duvm Stata
-module*. https://github.com/aabbdd12/duvm (see `CITATION.cff`), and the model's
-references:
+module*. Technical note, Zenodo. https://doi.org/10.5281/zenodo.22938259
+
+This DOI covers all versions of the note and resolves to the latest one; the
+version of 24 September 2026 is https://doi.org/10.5281/zenodo.22938260. The
+software is at https://github.com/aabbdd12/duvm (see `CITATION.cff`). Please
+also cite the model's references:
 
 Deaton, A. 1988. Quality, quantity, and spatial variation of price. *American
 Economic Review* 78: 418-430.

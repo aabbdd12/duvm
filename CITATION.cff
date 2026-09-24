@@ -20,6 +20,21 @@ keywords:
   - survey design
   - Stata
 license: "GPL-3.0-or-later"
+preferred-citation:
+  type: report
+  title: "Estimating Deaton's unit-value model: the duvm Stata module"
+  authors:
+    - family-names: Araar
+      given-names: Abdelkrim
+      affiliation: "CIRPEE & PEP"
+      orcid: "https://orcid.org/0000-0002-1539-6912"
+  year: 2026
+  month: 9
+  publisher:
+    name: Zenodo
+  doi: "10.5281/zenodo.22938259"
+  url: "https://doi.org/10.5281/zenodo.22938259"
+  notes: "Technical note. DOI of all versions; version of 2026-09-24: 10.5281/zenodo.22938260."
 references:
   - type: article
     title: "Quality, quantity, and spatial variation of price"
@@ -36,5 +51,6 @@ references:
     authors:
       - family-names: Deaton
         given-names: Angus
-    publisher: "Johns Hopkins University Press for the World Bank"
+    publisher:
+      name: "Johns Hopkins University Press for the World Bank"
     year: 1997
