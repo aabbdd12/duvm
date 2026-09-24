@@ -7,6 +7,7 @@ authors:
     given-names: Abdelkrim
     affiliation: "Université Laval / PEP"
     email: aabd@ecn.ulaval.ca
+    orcid: "https://orcid.org/0000-0002-1539-6912"
 version: "1.0.0"
 date-released: "2026-09-24"
 repository-code: "https://github.com/aabbdd12/duvm"
