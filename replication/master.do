@@ -1,4 +1,5 @@
-*! master.do — reproduce every table and figure of the technical note of duvm 1.0
+*! master.do — reproduce every table and figure of the technical note of duvm 1.1,
+*! and the numbers of its Section 3.4 (selection of the buyers)
 *!
 *! Run from this directory:
 *!     cd replication
@@ -10,12 +11,14 @@
 *!
 *! The two bootstrap scripts (Table5, Table6) run 400 replications each and
 *! take about five minutes together; global BOOT 0 reduces them to 40.
+*! Section3_4_selection runs 500 and 100 replications (50 and 40 with BOOT 0).
 clear all
 set more off
 if "$BOOT" == "" global BOOT 1
 
 local scripts Table1_2_data_quality Table3_4_elasticities Table7_deciles Table8_timing ///
-    TableA1_corrections TableA2_compat_code Figure1_3_engel Table5_variance_validation Table6_shortcut
+    TableA1_corrections TableA2_compat_code Figure1_3_engel Table5_variance_validation Table6_shortcut ///
+    Section3_4_selection
 
 capture mkdir out
 timer clear 9

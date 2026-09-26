@@ -1,4 +1,4 @@
-*! duvm 1.1.1  2026-09-26  Abdelkrim Araar
+*! duvm 1.1.2  2026-09-26  Abdelkrim Araar
 *! Deaton's unit-value model: quality-corrected price and expenditure
 *! elasticities from budget shares and unit values, cluster-level prices.
 *! Model: Deaton (1988, 1990, 1997 ch. 5). Mata engine, closed-form estimator.
