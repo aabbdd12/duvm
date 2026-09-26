@@ -1,4 +1,4 @@
-*! duvm 1.1.0  2026-09-26  Abdelkrim Araar
+*! duvm 1.1.1  2026-09-26  Abdelkrim Araar
 *! Deaton's unit-value model: quality-corrected price and expenditure
 *! elasticities from budget shares and unit values, cluster-level prices.
 *! Model: Deaton (1988, 1990, 1997 ch. 5). Mata engine, closed-form estimator.
@@ -83,6 +83,7 @@ program define duvm, eclass
             }
         }
         local selgoods : list uniq selgoods
+        local selgoods0 `selgoods'
         local zcom ""
         foreach g of local goods {
             local z_`g' ""
@@ -95,16 +96,44 @@ program define duvm, eclass
             if strpos(`"`seg'"', ":") {
                 local gg = trim(substr(`"`seg'"', 1, strpos(`"`seg'"', ":") - 1))
                 local vv = trim(substr(`"`seg'"', strpos(`"`seg'"', ":") + 1, .))
-                if !`: list gg in selgoods' {
-                    di as err "selvars(): `gg' is not a corrected good (see selgoods())"
+                if `"`gg'"' == "" {
+                    di as err `"selvars(): a good name is missing before ":" in "`seg'""'
                     exit 198
                 }
-                unab vv : `vv'
+                if `: word count `gg'' > 1 {
+                    di as err `"selvars(): one good per segment, "`gg'" is not one good; write "good1: vars ; good2: vars""'
+                    exit 198
+                }
+                if strpos(`"`vv'"', ":") {
+                    di as err `"selvars(): one colon per segment in "`seg'"; separate the goods by ";""'
+                    exit 198
+                }
+                if `"`vv'"' == "" {
+                    di as err "selvars(): no variable after `gg':"
+                    exit 198
+                }
+                if !`: list gg in goods' {
+                    di as err "selvars(): `gg' is not one of the goods (`goods')"
+                    exit 198
+                }
+                if !`: list gg in selgoods' {
+                    di as err "selvars(): `gg' is not corrected; add it to selgoods() (`selgoods')"
+                    exit 198
+                }
+                capture unab vv : `vv'
+                if _rc {
+                    di as err "selvars(), `gg': variable not found in `vv'"
+                    exit 111
+                }
                 confirm numeric variable `vv'
                 local z_`gg' `z_`gg'' `vv'
             }
             else {
-                unab vv : `seg'
+                capture unab vv : `seg'
+                if _rc {
+                    di as err `"selvars(): variable not found in "`seg'""'
+                    exit 111
+                }
                 confirm numeric variable `vv'
                 local zcom `zcom' `vv'
             }
@@ -113,15 +142,17 @@ program define duvm, eclass
             local z_`g' : list zcom | z_`g'
             local zall : list zall | z_`g'
         }
-        * for the engine: goods corrected (0/1) and, good by good, which of
-        * the variables in zall enter its probit (row by row)
+        * a probit-only variable is an exclusion restriction: it cannot be a
+        * regressor of the unit-value equation, nor the purchase itself
+        local xin `hhsize' `expend' `indcon' `indcat' `cluster'
         foreach g of local goods {
-            local on : list g in selgoods
-            local selgstr `selgstr' `on'
-            foreach v of local zall {
-                local inz : list v in z_`g'
-                local zmstr `zmstr' `=`on' & `inz''
-            }
+            local xin `xin' w`g' luv`g'
+        }
+        local bad : list zall & xin
+        if "`bad'" != "" {
+            di as err "selvars(): `bad' already in the model (first-stage regressor, cluster, budget share or"
+            di as err "unit value); a variable of the probit only must be excluded from the unit-value equation"
+            exit 198
         }
     }
     if `sel' & "`nonbuyers'" != "drop" {
@@ -209,11 +240,42 @@ program define duvm, eclass
     * ---- estimation sample: regressors non-missing, weight > 0 ----
     * (a missing budget share is a non-buyer: it does not drop the household)
     marksample touse
-    markout `touse' `X' `wt' `cluster' `bstrata' `bpsu' `zall'
+    markout `touse' `X' `wt' `cluster' `bstrata' `bpsu'
     qui replace `touse' = 0 if `wt' <= 0 | `wt' >= .
+    if `sel' & "`zall'" != "" {
+        qui count if `touse'
+        local n0 = r(N)
+        markout `touse' `zall'
+        qui count if `touse'
+        if r(N) < `n0' di as txt "(selvars(): `=string(`n0' - r(N), "%12.0fc")' households dropped for missing values of `zall')"
+    }
     qui count if `touse'
     local N = r(N)
     if `N' == 0 error 2000
+    if `sel' {
+        * a good every household buys has no selection to correct (and no probit)
+        local sg ""
+        foreach g of local selgoods {
+            qui count if `touse' & !(w`g' > 0 & w`g' < .)
+            if r(N) == 0 di as txt "(selection: every household buys `g'; it is left uncorrected)"
+            else local sg `sg' `g'
+        }
+        if "`sg'" == "" {
+            di as err "selection: every household buys each of the goods to correct; nothing to correct"
+            exit 459
+        }
+        local selgoods `sg'
+        * for the engine: goods corrected (0/1) and, good by good, which of
+        * the variables in zall enter its probit (row by row)
+        foreach g of local goods {
+            local on : list g in selgoods
+            local selgstr `selgstr' `on'
+            foreach v of local zall {
+                local inz : list v in z_`g'
+                local zmstr `zmstr' `=`on' & `inz''
+            }
+        }
+    }
 
     * ---- the shares and unit values the model uses (see _duvm_uv) ----
     local wnames `wvars'
@@ -279,7 +341,7 @@ program define duvm, eclass
         qui levelsof `hgroup' if `touse', local(glevs)
         local ng : word count `glevs'
         local gopts hhsize(`hhsize') expend(`expend') cluster(`cluster') `selection' qother(`qother') `nosymmetry' nonbuyers(`nonbuyers')
-        if `sel' local gopts `gopts' selgoods(`selgoods')
+        if `sel' local gopts `gopts' selgoods(`selgoods0')
         if `"`selvars'"' != "" local gopts `gopts' selvars(`selvars')
         if "`compatflags'" != "" local gopts `gopts' compatflags(`compatflags')
         else if "`compat'" != "" local gopts `gopts' compat

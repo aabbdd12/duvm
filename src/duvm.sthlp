@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.1.0  26sep2026}{...}
+{* *! version 1.1.1  26sep2026}{...}
 {vieweralsosee "duvmdiag" "help duvmdiag"}{...}
 {viewerjumpto "Syntax" "duvm##syntax"}{...}
 {viewerjumpto "Description" "duvm##description"}{...}
@@ -43,7 +43,7 @@ unit value, missing or not, is ignored: see {opt nonbuyers()}).
 {synopt:{opt sub:round(varname)}}survey round: idem{p_end}
 {synopt:{opt sel:ection}}correct the unit values of the buyers for selection (Heckman){p_end}
 {synopt:{opt selg:oods(namelist)}}the goods corrected; default all; implies {opt selection}{p_end}
-{synopt:{opt selv:ars(spec)}}variables of the selection probits only (exclusion restrictions), common or by good; implies {opt selection}{p_end}
+{synopt:{cmd:selvars(}[{it:good}{cmd::}] {it:varlist} [{cmd:;} ...]{cmd:)}}variables of the probits only (exclusion restrictions), for every corrected good or for one good; implies {opt selection}{p_end}
 {synopt:{opt nonb:uyers(mode)}}unit values of the households that do not buy the good: {cmd:drop} (the default), {cmd:average} or {cmd:asis}{p_end}
 {synopt:{opt qoth:er(#)}}quality elasticity assumed for the composite of all other goods; default 0.25{p_end}
 {synopt:{opt nosym:metry}}do not impose the (approximate) Slutsky symmetry{p_end}
@@ -166,15 +166,54 @@ Without {opt selvars()}, the correction is identified by the nonlinearity of
 the Mills ratio only.
 
 {phang}
-{opt selgoods(namelist)} restricts the correction to some goods; the others
-keep the unit-value equation of the book, and their estimates are those
-obtained without {opt selection}. {opt selvars(spec)} gives the variables of
-the probits beyond the first-stage regressors and their cluster means. {it:spec}
-is one or more segments separated by {cmd:;}, each either {it:varlist}, which
-enters the probit of every corrected good, or {it:good}{cmd::} {it:varlist},
-which enters the probit of that good only; for instance
-{cmd:selvars(dist ; other: perc_ocupa)}. A good named in {opt selvars()} must be
-corrected.
+{opt selgoods(namelist)} restricts the correction to the goods listed; the
+others keep the unit-value equation of the book, and their estimates are those
+obtained without {opt selection}. By default every good is corrected.
+
+{phang}
+{cmd:selvars(}[{it:good}{cmd::}] {it:varlist} [{cmd:;} ...]{cmd:)} gives the
+variables of the probits of purchase beyond the first-stage regressors and their
+cluster means, which always enter. The option holds one or more segments
+separated by a semicolon. A segment without a good name enters the probit of
+every corrected good; a segment that starts with a good name and a colon enters
+the probit of that good only. The good is named as in the list of goods. For
+instance:
+
+{p2colset 9 44 46 2}{...}
+{p2col:{cmd:selvars(dist)}}{cmd:dist} in the probit of every corrected good{p_end}
+{p2col:{cmd:selvars(other: perc_ocupa)}}{cmd:perc_ocupa} in the probit of {cmd:other} only{p_end}
+{p2col:{cmd:selvars(dist ; other: perc_ocupa)}}{cmd:dist} in every probit, and {cmd:perc_ocupa} in that of {cmd:other}{p_end}
+{p2col:{cmd:selvars(rice: rururb ; other: perc_ocupa)}}{cmd:rururb} for {cmd:rice}, {cmd:perc_ocupa} for {cmd:other}{p_end}
+{p2colreset}{...}
+
+{pmore}
+The probit of a corrected good thus holds the first-stage regressors x, their
+cluster means, the variables of the segments without a good name, and those of
+its own segments; a variable named twice enters once. A good may have several
+segments. The header of the output lists, good by good, the variables that
+enter its probit beyond x and its cluster means, and
+{cmd:e(sel_z_}{it:good}{cmd:)} stores them.
+
+{pmore}
+Rules, checked before estimating: a good named in {opt selvars()} must be one of
+the goods and must be corrected (in the list of {opt selgoods()} when it is
+given); a segment names one good, with one colon, and at least one variable; the
+variables are numeric and cannot already be in the model -- {opt hhsize()},
+{opt expend()}, {opt indcon()}, {opt indcat()}, the cluster, or a budget share
+{cmd:w}{it:good} or log unit value {cmd:luv}{it:good} -- since a variable of the
+probit only is an exclusion restriction: it should move the decision to buy but
+not the unit value paid. A household with a missing value of one of these
+variables is dropped from the whole model, for every good; a note gives their
+number. A good that every household buys has no selection to correct: it is
+left uncorrected, with a note.
+
+{pmore}
+In the dialog box ({cmd:db duvm}),
+tab {it:Selection}: the goods to correct, the variables for every corrected
+good, and, for the variables of one good only, a list from 0 (the default: the
+corrected goods share the same variables) to 10 that shows as many lines
+{it:good} / {it:variables}. Beyond ten goods, type the option in the
+command.
 
 {phang}
 The correction is only as good as the identification of the Mills ratio.
@@ -503,6 +542,17 @@ first, which advises to leave other cereals uncorrected, then the correction of
 the other goods{p_end}
 {phang2}{cmd:. duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selection}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice)}{p_end}
+
+{pstd}The same goods corrected, with variables of the probit only. In every case
+the probit of a corrected good holds x -- log expenditure, log household size,
+{cmd:age}, the indicators of {cmd:sex} and {cmd:educ} -- and their cluster
+means; {cmd:selvars()} adds to it. First, {cmd:perc_ocupa} in the probit of rice
+only (corn and wheat: x and its means); then {cmd:perc_ocupa} in the probits of
+all three; then a variable of its own for two goods of the three:
+{cmd:perc_ocupa} for wheat, {cmd:nocup0} for rice, and nothing more for corn{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice) selvars(rice: perc_ocupa)}{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice) selvars(perc_ocupa)}{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice) selvars(wheat: perc_ocupa ; rice: nocup0)}{p_end}
 
 {pstd}The tables with significance stars, on screen and in a Word file{p_end}
 {phang2}{cmd:. duvm, stars}{p_end}
