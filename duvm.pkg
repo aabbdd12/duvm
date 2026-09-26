@@ -3,7 +3,7 @@ d duvm: Deaton's unit-value model - quality-corrected price and expenditure elas
 d
 d Author: Abdelkrim Araar, Universite Laval / PEP
 d Support: aabd@ecn.ulaval.ca
-d Version : 1.1.3
+d Version : 1.1.4
 d License : GPL-3.0-or-later
 d
 d Deaton (1988, 1990, 1997 ch. 5): within-cluster first stage, between-cluster
@@ -12,7 +12,8 @@ d the separability parameter, completion of the system, approximate Slutsky
 d symmetry. Linearized (influence-function) variance by cluster or by survey
 d design (svyset), design bootstrap of both stages, diagnostics (duvmdiag,
 d estat diagnostics), dialog box, Engel curves after estimation (predict,
-d estat engel), correction of the unit values for the selection of the buyers
+d estat engel), examples of the help run from links (duvm_examples),
+d correction of the unit values for the selection of the buyers
 d (selection, selgoods(), selvars(): Heckman, probit in the standard errors).
 d Option compat reproduces the code published with Deaton's book.
 d
@@ -30,5 +31,7 @@ f src/_duvm_engel.ado
 f src/_duvm_uv.ado
 f src/duvmdiag.ado
 f src/duvmdiag.sthlp
+f src/duvm_examples.ado
+F examples/mexico_2014_cereals.dta
 f examples/mexico_2014_cereals.dta
 f examples/duvm_tour.do

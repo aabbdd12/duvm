@@ -1,11 +1,13 @@
 {smcl}
-{* *! version 1.1.0  26sep2026}{...}
+{* *! version 1.1.4  26sep2026}{...}
 {vieweralsosee "duvm" "help duvm"}{...}
 {title:Title}
 
 {p2colset 5 17 19 2}{...}
 {p2col:{cmd:duvmdiag} {hline 2}}Diagnostics of the unit-value model before estimating it{p_end}
 {p2colreset}{...}
+
+{p 4 4 2}{txt}Package {cmd:duvm}, version {res}1.1.4{txt} (26/09/2026) {c |} Stata {res}14.2{txt} or later {c |} first release {res}1.0.0{txt} (24/09/2026){p_end}
 
 
 {title:Syntax}
@@ -69,8 +71,16 @@ variable in {opt selvars()}, or at least {cmd:vce(bootstrap)}.
 
 {title:Example}
 
-{phang2}{cmd:. use mexico_2014_cereals}{p_end}
+{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)}{p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 9":example 9: click to run in command window}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 9, do":open as a do-file}){p_end}
+
+{pstd}With the diagnostic of the selection correction (Table D3){p_end}
+{phang2}{cmd:. duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selection}{p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 5":example 5: click to run in command window}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 5, db":click to run in dialog box}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 5, do":open as a do-file}){p_end}
 
 
 {title:Author}

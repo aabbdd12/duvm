@@ -28,6 +28,9 @@ variation of prices across clusters. Closed-form, written in Mata.
   the buyers (`selection`, Heckman, with the probit in the standard errors; by
   good with `selgoods()` and `selvars()`, and a diagnostic of its identification), `estat`,
   standard `e()` results, a dialog box (`db duvm`);
+* every example of `help duvm` runs from its links: in the command window, in
+  the dialog box (filled in) or as a do-file, without losing the data in memory
+  (`duvm_examples`);
 * three Engel curves after estimation, with their confidence bands: the budget
   share, the unit value (quality) and the quantity (`predict ..., share`,
   `quality`, `quantity`; `estat engel` draws them);
@@ -62,14 +65,14 @@ shipped with the package.
 Each command is on one line, so that it can be pasted into the Command window.
 
 ```stata
-use mexico_2014_cereals, clear
+sysuse mexico_2014_cereals, clear
 duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)
 estat quality
 estat engel
 duvm, stars
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) notable saveres(duvm_results.docx)
-svyset psu [pw=sweight], strata(quintile)
+svyset psu [pweight=sweight], strata(strata) vce(linearized) singleunit(missing)
 duvm corn wheat rice other, hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) vce(svy)
 ```
 

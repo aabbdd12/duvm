@@ -1,5 +1,5 @@
 /*
-    duvm.dlg  —  dialog for duvm 1.1.3 (Deaton's unit-value model)
+    duvm.dlg  —  dialog for duvm 1.1.4 (Deaton's unit-value model)
     db duvm
 
     Tabs, as in Stata's estimation dialogs:
@@ -770,34 +770,64 @@ BEGIN
         put " selvars("
         put sel.vl_all
         if sel.ed_g1 {
-          put "; " sel.ed_g1 ": " sel.vl_v1
+          if sel.vl_all {
+            put "; "
+          }
+          put sel.ed_g1 ": " sel.vl_v1
         }
         if sel.ed_g2 {
-          put "; " sel.ed_g2 ": " sel.vl_v2
+          if sel.vl_all | sel.ed_g1 {
+            put "; "
+          }
+          put sel.ed_g2 ": " sel.vl_v2
         }
         if sel.ed_g3 {
-          put "; " sel.ed_g3 ": " sel.vl_v3
+          if sel.vl_all | sel.ed_g1 | sel.ed_g2 {
+            put "; "
+          }
+          put sel.ed_g3 ": " sel.vl_v3
         }
         if sel.ed_g4 {
-          put "; " sel.ed_g4 ": " sel.vl_v4
+          if sel.vl_all | sel.ed_g1 | sel.ed_g2 | sel.ed_g3 {
+            put "; "
+          }
+          put sel.ed_g4 ": " sel.vl_v4
         }
         if sel.ed_g5 {
-          put "; " sel.ed_g5 ": " sel.vl_v5
+          if sel.vl_all | sel.ed_g1 | sel.ed_g2 | sel.ed_g3 | sel.ed_g4 {
+            put "; "
+          }
+          put sel.ed_g5 ": " sel.vl_v5
         }
         if sel.ed_g6 {
-          put "; " sel.ed_g6 ": " sel.vl_v6
+          if sel.vl_all | sel.ed_g1 | sel.ed_g2 | sel.ed_g3 | sel.ed_g4 | sel.ed_g5 {
+            put "; "
+          }
+          put sel.ed_g6 ": " sel.vl_v6
         }
         if sel.ed_g7 {
-          put "; " sel.ed_g7 ": " sel.vl_v7
+          if sel.vl_all | sel.ed_g1 | sel.ed_g2 | sel.ed_g3 | sel.ed_g4 | sel.ed_g5 | sel.ed_g6 {
+            put "; "
+          }
+          put sel.ed_g7 ": " sel.vl_v7
         }
         if sel.ed_g8 {
-          put "; " sel.ed_g8 ": " sel.vl_v8
+          if sel.vl_all | sel.ed_g1 | sel.ed_g2 | sel.ed_g3 | sel.ed_g4 | sel.ed_g5 | sel.ed_g6 | sel.ed_g7 {
+            put "; "
+          }
+          put sel.ed_g8 ": " sel.vl_v8
         }
         if sel.ed_g9 {
-          put "; " sel.ed_g9 ": " sel.vl_v9
+          if sel.vl_all | sel.ed_g1 | sel.ed_g2 | sel.ed_g3 | sel.ed_g4 | sel.ed_g5 | sel.ed_g6 | sel.ed_g7 | sel.ed_g8 {
+            put "; "
+          }
+          put sel.ed_g9 ": " sel.vl_v9
         }
         if sel.ed_g10 {
-          put "; " sel.ed_g10 ": " sel.vl_v10
+          if sel.vl_all | sel.ed_g1 | sel.ed_g2 | sel.ed_g3 | sel.ed_g4 | sel.ed_g5 | sel.ed_g6 | sel.ed_g7 | sel.ed_g8 | sel.ed_g9 {
+            put "; "
+          }
+          put sel.ed_g10 ": " sel.vl_v10
         }
         put ")"
       }
@@ -843,6 +873,8 @@ BEGIN
     }
     option rpt.ck_notab
     optionarg rpt.vn_hgroup
-    optionarg /quoted rpt.fi_save
+    if rpt.fi_save {
+      optionarg /quoted rpt.fi_save
+    }
   endoptions
 END

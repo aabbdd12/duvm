@@ -21,7 +21,7 @@ duvm corn wheat rice other, hhsize(hhsize) expend(hh_current_inc) ///
     cluster(psu) region(rururb) indcat(sex educ) indcon(age)
 
 * 4. The survey design: strata and PSUs read from svyset
-svyset psu [pw=sweight], strata(quintile)
+svyset psu [pweight=sweight], strata(strata) vce(linearized) singleunit(missing)
 duvm corn wheat rice other, hhsize(hhsize) expend(hh_current_inc) ///
     cluster(psu) region(rururb) indcat(sex educ) indcon(age) vce(svy)
 

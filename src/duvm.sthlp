@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.1.3  26sep2026}{...}
+{* *! version 1.1.4  26sep2026}{...}
 {vieweralsosee "duvmdiag" "help duvmdiag"}{...}
 {viewerjumpto "Syntax" "duvm##syntax"}{...}
 {viewerjumpto "Description" "duvm##description"}{...}
@@ -14,6 +14,8 @@
 {p2colset 5 14 16 2}{...}
 {p2col:{cmd:duvm} {hline 2}}Deaton's unit-value model: quality-corrected price and expenditure elasticities from budget shares and unit values{p_end}
 {p2colreset}{...}
+
+{p 4 4 2}{txt}Package {cmd:duvm}, version {res}1.1.4{txt} (26/09/2026) {c |} Stata {res}14.2{txt} or later {c |} first release {res}1.0.0{txt} (24/09/2026){p_end}
 
 
 {marker syntax}{...}
@@ -466,6 +468,9 @@ curves; {opt nodraw} computes them without drawing. {cmd:estat engel} stores
 {phang2}{cmd:. predict lnq_corn, quantity good(corn) normalize}{p_end}
 {phang2}{cmd:. estat engel, quantity normalize}{p_end}
 {phang2}{cmd:. estat engel, quantity level(90) data(engel_q)}{p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 8":example 8: click to run in command window}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 8, db":click to run in dialog box}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 8, do":open as a do-file}){p_end}
 
 
 {marker results}{...}
@@ -523,43 +528,105 @@ curves; {opt nodraw} computes them without drawing. {cmd:estat engel} stores
 {marker examples}{...}
 {title:Examples}
 
-{pstd}The cereal groups of the Mexican ENIGH 2014 (installed with the package){p_end}
-{phang2}{cmd:. use mexico_2014_cereals}{p_end}
+{pstd}
+The examples use the cereal groups of the Mexican ENIGH 2014, installed with the
+package ({cmd:sysuse mexico_2014_cereals}). Each one runs from its blue links:
+in the command window, in the dialog box (filled in; click OK), or as a do-file
+opened in the Do-file Editor, to change and run it. The data in memory are not
+lost: the command window and the do-file give them back at the end, even after
+an error; the dialog box, which needs the example data in memory, refuses to
+replace data that have unsaved changes. Files written by the examples go to
+Stata's temporary folder, not to the working folder. The links call
+{cmd:duvm_examples} {it:#} [{cmd:, db} | {cmd:do}].
+
+{title:Example 1: Estimating the elasticities, with the diagnostics and the quality parameters}
+
+{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)}{p_end}
 {phang2}{cmd:. estat diagnostics}{p_end}
 {phang2}{cmd:. estat quality}{p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 1":example 1: click to run in command window}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 1, db":click to run in dialog box}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 1, do":open as a do-file}){p_end}
 
-{pstd}With the survey design{p_end}
-{phang2}{cmd:. svyset psu [pw=sweight], strata(quintile)}{p_end}
+{title:Example 2: With the survey design}
+
+{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. svyset psu [pweight=sweight], strata(strata) vce(linearized) singleunit(missing)}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other, hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) vce(svy)}{p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 2":example 2: click to run in command window}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 2, db":click to run in dialog box}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 2, do":open as a do-file}){p_end}
 
-{pstd}Bootstrap of both stages, and by decile{p_end}
-{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) vce(bootstrap, reps(500) seed(1))}{p_end}
+{title:Example 3: Bootstrap of both stages}
+
+{pstd}Fifty replications for the example; take several hundred in an application.{p_end}
+{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) vce(bootstrap, reps(50) seed(1))}{p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 3":example 3: click to run in command window}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 3, db":click to run in dialog box}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 3, do":open as a do-file}){p_end}
+
+{title:Example 4: Own-price elasticities by decile of per capita expenditure}
+
+{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) hgroup(decile)}{p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 4":example 4: click to run in command window}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 4, db":click to run in dialog box}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 4, do":open as a do-file}){p_end}
 
-{pstd}Unit values corrected for the selection of the buyers: the diagnostic
-first, which advises to leave other cereals uncorrected, then the correction of
-the other goods{p_end}
+{title:Example 5: Unit values corrected for the selection of the buyers}
+
+{pstd}The diagnostic first, which advises to leave other cereals uncorrected (Table D3), then the correction of the other goods. The dialog box shows the second command.{p_end}
+{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selection}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice)}{p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 5":example 5: click to run in command window}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 5, db":click to run in dialog box}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 5, do":open as a do-file}){p_end}
 
-{pstd}The same goods corrected, with variables of the probit only. In every case
-the probit of a corrected good holds x -- log expenditure, log household size,
-{cmd:age}, the indicators of {cmd:sex} and {cmd:educ} -- and their cluster
-means; {cmd:selvars()} adds to it. First, {cmd:perc_ocupa} in the probit of rice
-only (corn and wheat: x and its means); then {cmd:perc_ocupa} in the probits of
-all three; then a variable of its own for two goods of the three:
-{cmd:perc_ocupa} for wheat, {cmd:nocup0} for rice, and nothing more for corn{p_end}
+{title:Example 6: Variables of the probit only}
+
+{pstd}The same goods corrected. In every case the probit of a corrected good holds x -- log expenditure, log household size, {cmd:age}, the indicators of {cmd:sex} and {cmd:educ} -- and their cluster means; {cmd:selvars()} adds to it. First, {cmd:perc_ocupa} in the probit of rice only (corn and wheat: x and its means); then {cmd:perc_ocupa} in the probits of all three; then a variable of its own for two goods of the three: {cmd:perc_ocupa} for wheat, {cmd:nocup0} for rice, and nothing more for corn. The dialog box shows the third command.{p_end}
+{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice) selvars(rice: perc_ocupa)}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice) selvars(perc_ocupa)}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice) selvars(wheat: perc_ocupa ; rice: nocup0)}{p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 6":example 6: click to run in command window}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 6, db":click to run in dialog box}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 6, do":open as a do-file}){p_end}
 
-{pstd}The tables with significance stars, on screen and in a Word file{p_end}
-{phang2}{cmd:. duvm, stars}{p_end}
+{title:Example 7: The tables in a Word file, then with significance stars on screen}
+
+{pstd}Run from its link, the example writes the file to Stata's temporary folder.{p_end}
+{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) saveres(duvm_results.docx)}{p_end}
+{phang2}{cmd:. duvm, stars}{p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 7":example 7: click to run in command window}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 7, db":click to run in dialog box}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 7, do":open as a do-file}){p_end}
 
-{pstd}Before estimating a larger system{p_end}
+{title:Example 8: Engel curves after estimation}
+
+{pstd}See {help duvm##engel:Engel curves}. The dialog box fills in the estimation.{p_end}
+{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) notable}{p_end}
+{phang2}{cmd:. predict w_corn, share good(corn)}{p_end}
+{phang2}{cmd:. predict se_w_corn, share good(corn) stdp}{p_end}
+{phang2}{cmd:. estat engel}{p_end}
+{phang2}{cmd:. estat engel, quality lnx}{p_end}
+{phang2}{cmd:. estat engel, quantity normalize level(90) data(engel_q)}{p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 8":example 8: click to run in command window}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 8, db":click to run in dialog box}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 8, do":open as a do-file}){p_end}
+
+{title:Example 9: The diagnostic before estimating a larger system}
+
+{pstd}See {helpb duvmdiag}.{p_end}
+{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)}{p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 9":example 9: click to run in command window}){p_end}
+{p 8 8 2}{txt}({stata "duvm_examples 9, do":open as a do-file}){p_end}
 
 
 {marker references}{...}
@@ -571,9 +638,9 @@ all three; then a variable of its own for two goods of the three:
 {phang}Deaton, A. 1990. Price elasticities from survey data: extensions and
 Indonesian results. {it:Journal of Econometrics} 44: 281-309.{p_end}
 
-{phang}Deaton, A. 1997. {it:The Analysis of Household Surveys: A Microeconometric
-Approach to Development Policy}. Baltimore: Johns Hopkins University Press,
-chapter 5.{p_end}
+{phang}Deaton, A. 1997.
+{it:The Analysis of Household Surveys: A Microeconometric Approach to Development Policy}.
+Baltimore: Johns Hopkins University Press for the World Bank, chapter 5.{p_end}
 
 {phang}Heckman, J. J. 1979. Sample selection bias as a specification error.
 {it:Econometrica} 47: 153-161.{p_end}
@@ -589,4 +656,7 @@ conditional mean independence assumptions. {it:Journal of Econometrics} 68:
 {title:Author}
 
 {pstd}Abdelkrim Araar, Universit{c e'} Laval / PEP, aabd@ecn.ulaval.ca{p_end}
-{pstd}Version 1.1.0. License: GPL-3.0-or-later.{p_end}
+{pstd}Version 1.1.4. Requires Stata 14.2 or later. License: GPL-3.0-or-later.{p_end}
+{pstd}Technical note: Araar, A. 2026. Estimating Deaton's unit-value model: the
+{cmd:duvm} Stata module. Zenodo.
+{browse "https://doi.org/10.5281/zenodo.22938872":doi:10.5281/zenodo.22938872}.{p_end}
