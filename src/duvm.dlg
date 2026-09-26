@@ -1,10 +1,10 @@
 /*
-    duvm.dlg  —  dialog for duvm 1.1 (Deaton's unit-value model)
+    duvm.dlg  —  dialog for duvm 1.1.3 (Deaton's unit-value model)
     db duvm
 
     Tabs, as in Stata's estimation dialogs:
-      Model       goods, required variables, purged effects, characteristics
-      Model 2     quality, symmetry, non-buyers, Deaton's published code
+      Model       goods, required variables, purged effects, characteristics,
+                  quality, symmetry, non-buyers, Deaton's published code
       Selection   correction of the unit values for the selection of the buyers:
                   the goods corrected (selgoods) and the variables of the probit
                   only (selvars), for every corrected good or good by good
@@ -71,24 +71,20 @@ BEGIN
   VARNAME  vn_region   85  245  200   ., label("Region") option(region)
   TEXT     tx_sub     340  245   90   ., label("Survey round:")
   VARNAME  vn_sub     435  245  205   ., label("Survey round") option(subround)
+
+  GROUPBOX gb_q        10  295  640  62, label("Quality and symmetry")
+  TEXT     tx_qother   20  313  440   ., label("Quality elasticity assumed for the composite of all other goods:")
+  EDIT     ed_qother  470  313   80   ., label("qother") default(0.25) numonly option(qother)
+  CHECKBOX ck_nosym    20  335  600   ., label("Do not impose the (approximate) Slutsky symmetry") option(nosymmetry)
+
+  GROUPBOX gb_nb       10  365  640  48, label("Non-buyers (a zero or missing budget share, read as 0: the household stays in the model)")
+  TEXT     tx_nb       20  383  230   ., label("Their unit values, if the data hold any:")
+  COMBOBOX cb_nb      255  383  385   ., dropdownlist contents(nblist) values(nbvals) label("Non-buyers")
+
+  GROUPBOX gb_c        10  421  640  48, label("Published code")
+  CHECKBOX ck_compat   20  439  620   ., label("Reproduce the Stata code published with Deaton (1997), unweighted formulas (compat)") option(compat)
 END
 
-DIALOG opts, tabtitle("Model 2")
-BEGIN
-  GROUPBOX gb_q        10   10  640 105, label("Quality and symmetry")
-  TEXT     tx_qother   20   30  440   ., label("Quality elasticity assumed for the composite of all other goods:")
-  EDIT     ed_qother  470   30   80   ., label("qother") default(0.25) numonly option(qother)
-  CHECKBOX ck_nosym    20   60  600   ., label("Do not impose the (approximate) Slutsky symmetry") option(nosymmetry)
-
-  GROUPBOX gb_nb       10  125  640  75, label("Non-buyers (households with a zero or missing budget share)")
-  TEXT     tx_nb       20  147  230   ., label("Their unit values, if the data hold any:")
-  COMBOBOX cb_nb      255  147  385   ., dropdownlist contents(nblist) values(nbvals) label("Non-buyers")
-  TEXT     tx_nb2      20  172  620   ., label("A missing budget share is read as 0: the household stays in the model as a non-buyer.")
-
-  GROUPBOX gb_c        10  210  640  75, label("Published code")
-  CHECKBOX ck_compat   20  230  600   ., label("Reproduce the Stata code published with Deaton (1997) (compat)") option(compat)
-  TEXT     tx_compat   40  255  600   ., label("Deaton's code is unweighted; with weights its formulas are kept and the weights applied as by default.")
-END
 
 LIST nblist
 BEGIN
@@ -703,8 +699,8 @@ BEGIN
     optionarg main.vn_sub
     optionarg main.vl_indcat
     optionarg main.vl_indcon
-    optionarg /hidedefault opts.ed_qother
-    option opts.ck_nosym
+    optionarg /hidedefault main.ed_qother
+    option main.ck_nosym
     if sel.ck_sel {
       put " selection"
       if sel.ed_selg {
@@ -806,9 +802,9 @@ BEGIN
         put ")"
       }
     }
-    option opts.ck_compat
-    if opts.cb_nb {
-      put " nonbuyers(" opts.cb_nb ")"
+    option main.ck_compat
+    if main.cb_nb {
+      put " nonbuyers(" main.cb_nb ")"
     }
     if se.rb_svy {
       put " vce(svy)"
