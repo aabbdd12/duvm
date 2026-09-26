@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.1.4  26sep2026}{...}
+{* *! version 1.1.5  26sep2026}{...}
 {vieweralsosee "duvmdiag" "help duvmdiag"}{...}
 {viewerjumpto "Syntax" "duvm##syntax"}{...}
 {viewerjumpto "Description" "duvm##description"}{...}
@@ -15,7 +15,7 @@
 {p2col:{cmd:duvm} {hline 2}}Deaton's unit-value model: quality-corrected price and expenditure elasticities from budget shares and unit values{p_end}
 {p2colreset}{...}
 
-{p 4 4 2}{txt}Package {cmd:duvm}, version {res}1.1.4{txt} (26/09/2026) {c |} Stata {res}14.2{txt} or later {c |} first release {res}1.0.0{txt} (24/09/2026){p_end}
+{p 4 4 2}{txt}Package {cmd:duvm}, version {res}1.1.5{txt} (26/09/2026) {c |} Stata {res}14.2{txt} or later {c |} first release {res}1.0.0{txt} (24/09/2026){p_end}
 
 
 {marker syntax}{...}
@@ -46,6 +46,7 @@ unit value, missing or not, is ignored: see {opt nonbuyers()}).
 {synopt:{opt sel:ection}}correct the unit values of the buyers for selection (Heckman){p_end}
 {synopt:{opt selg:oods(namelist)}}the goods corrected; default all; implies {opt selection}{p_end}
 {synopt:{cmd:selvars(}[{it:good}{cmd::}] {it:varlist} [{cmd:;} ...]{cmd:)}}variables of the probits only (exclusion restrictions), for every corrected good or for one good; implies {opt selection}{p_end}
+{synopt:{opt elas:ticities(type)}}{cmd:households} (the default), {cmd:individuals} or {cmd:market}{p_end}
 {synopt:{opt nonb:uyers(mode)}}unit values of the households that do not buy the good: {cmd:drop} (the default), {cmd:average} or {cmd:asis}{p_end}
 {synopt:{opt qoth:er(#)}}quality elasticity assumed for the composite of all other goods; default 0.25{p_end}
 {synopt:{opt nosym:metry}}do not impose the (approximate) Slutsky symmetry{p_end}
@@ -234,6 +235,39 @@ standard errors 20% to 35% larger than the linearized ones). Then leave the
 good uncorrected with {opt selgoods()}, add a variable of the probit only in
 {opt selvars()} that moves the purchase but not the unit value, or at least
 use {cmd:vce(bootstrap)}.
+
+{phang}
+{opt elasticities(households|individuals|market)} sets which elasticities are
+reported; all the formulas are the same, what changes is whose behaviour they
+describe.
+
+{phang2}
+{cmd:households}, the default, gives the elasticities of the household, as in
+Deaton (1997): each household counts for its weight, and the elasticities are
+evaluated at the mean budget shares of the households.
+
+{phang2}
+{cmd:individuals} gives those of the individual: each household counts for its
+weight times its size, {opt hhsize()}, in the regressions, the cluster averages
+and the mean budget shares. The weight used -- the weight given, that of
+{helpb svyset} under {cmd:vce(svy)}, or 1, times {opt hhsize()} -- is stored in
+{cmd:e(wexp)}, so that {cmd:predict} and {cmd:estat} use the same.
+
+{phang2}
+{cmd:market} gives those of market demand, the response of the total demand for
+the good: the estimation is that of the households, and the elasticities are
+evaluated at the aggregate budget shares, total spending on the good over total
+spending, each household counting for its weight times its total expenditure.
+With budget shares linear in log expenditure and log prices and common
+coefficients, this is the elasticity of the aggregate demand.
+
+{pmore}
+The three differ through the budget shares at which the elasticities are
+evaluated (large households, often poorer, and rich households, which spend
+more, weigh differently) and, for {cmd:individuals}, through the estimates when
+behaviour varies with the size of the household. The standard errors follow:
+the shares are estimated moments whose influence functions enter the variance.
+{opt hhsize()} enters the first stage as log household size in all three.
 
 {phang}
 {opt nonbuyers(drop|average|asis)} says what to do with the unit values of the
@@ -495,6 +529,7 @@ curves; {opt nodraw} computes them without drawing. {cmd:estat engel} stores
 {synopt:{cmd:e(vce)}}{cmd:cluster}, {cmd:svy}, {cmd:bootstrap} or {cmd:none}{p_end}
 {synopt:{cmd:e(symmetry)}}{cmd:approx} or {cmd:none}{p_end}
 {synopt:{cmd:e(compat)}}{cmd:compat} when set{p_end}
+{synopt:{cmd:e(elasticities)}}{cmd:households}, {cmd:individuals} or {cmd:market}{p_end}
 {synopt:{cmd:e(selection)}}{cmd:heckman} under {opt selection}{p_end}
 {synopt:{cmd:e(selgoods)}}the goods corrected; {cmd:e(selvars)} the {opt selvars()} specification{p_end}
 {synopt:{cmd:e(sel_z_}{it:good}{cmd:)}}the probit-only variables of a corrected good{p_end}
@@ -511,7 +546,8 @@ curves; {opt nodraw} computes them without drawing. {cmd:estat engel} stores
 {synopt:{cmd:e(elast_qual)}}, {cmd:e(se_elast_qual)}}quality elasticities{p_end}
 {synopt:{cmd:e(se_shares_mean)}}, {cmd:e(se_zeta)}}standard errors of the mean shares and of zeta{p_end}
 {synopt:{cmd:e(elast_price_own_group)}}own-price elasticities by group ({opt hgroup()}){p_end}
-{synopt:{cmd:e(shares_mean)}}, {cmd:e(b0)}, {cmd:e(b1)}, {cmd:e(zeta)}, {cmd:e(zeta_x)}}first-stage parameters{p_end}
+{synopt:{cmd:e(shares_mean)}}the budget shares at which the elasticities are evaluated: the mean shares, or the aggregate shares with {cmd:elasticities(market)}{p_end}
+{synopt:{cmd:e(b0)}, {cmd:e(b1)}, {cmd:e(zeta)}, {cmd:e(zeta_x)}}first-stage parameters{p_end}
 {synopt:{cmd:e(beta0)}}, {cmd:e(beta1)}}all first-stage coefficients{p_end}
 {synopt:{cmd:e(omega)}}, {cmd:e(sigma)}, {cmd:e(chi)}, {cmd:e(n0)}, {cmd:e(n1)}}residual moments and harmonic cluster sizes{p_end}
 {synopt:{cmd:e(S)}}, {cmd:e(R)}, {cmd:e(Sf)}, {cmd:e(Rf)}}second-stage moments, raw and corrected{p_end}
@@ -656,7 +692,7 @@ conditional mean independence assumptions. {it:Journal of Econometrics} 68:
 {title:Author}
 
 {pstd}Abdelkrim Araar, Universit{c e'} Laval / PEP, aabd@ecn.ulaval.ca{p_end}
-{pstd}Version 1.1.4. Requires Stata 14.2 or later. License: GPL-3.0-or-later.{p_end}
+{pstd}Version 1.1.5. Requires Stata 14.2 or later. License: GPL-3.0-or-later.{p_end}
 {pstd}Technical note: Araar, A. 2026. Estimating Deaton's unit-value model: the
 {cmd:duvm} Stata module. Zenodo.
 {browse "https://doi.org/10.5281/zenodo.22938872":doi:10.5281/zenodo.22938872}.{p_end}

@@ -1,5 +1,6 @@
 *! master.do — reproduce every table and figure of the technical note of duvm 1.1,
-*! and the numbers of its Section 3.4 (selection of the buyers)
+*! and the numbers of its Sections 3.4 (selection of the buyers) and 3.5 (which
+*! elasticity: household, individual, market)
 *!
 *! Run from this directory:
 *!     cd replication
@@ -18,7 +19,7 @@ if "$BOOT" == "" global BOOT 1
 
 local scripts Table1_2_data_quality Table3_4_elasticities Table7_deciles Table8_timing ///
     TableA1_corrections TableA2_compat_code Figure1_3_engel Table5_variance_validation Table6_shortcut ///
-    Section3_4_selection
+    Section3_4_selection Section3_5_elasticities
 
 capture mkdir out
 timer clear 9

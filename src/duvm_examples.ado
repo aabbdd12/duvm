@@ -1,4 +1,4 @@
-*! duvm_examples 1.1.4  2026-09-26  Abdelkrim Araar
+*! duvm_examples 1.1.5  2026-09-26  Abdelkrim Araar
 *! The examples of help duvm and help duvmdiag, run from their links.
 *!   duvm_examples #          run example # in the command window
 *!   duvm_examples #, db      open the dialog box of duvm filled in for example #
@@ -152,6 +152,7 @@ program define duvm_examples
         .duvm_dlg.rpt.ck_dreg.setoff
         .duvm_dlg.rpt.ck_notab.setoff
         .duvm_dlg.rpt.fi_save.setvalue ""
+        .duvm_dlg.rpt.rb_hh.seton
         .duvm_dlg.weights.vl_wgt.setvalue ""
         .duvm_dlg.weights.rb_none.seton
         * the example

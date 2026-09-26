@@ -3,7 +3,7 @@ d duvm: Deaton's unit-value model - quality-corrected price and expenditure elas
 d
 d Author: Abdelkrim Araar, Universite Laval / PEP
 d Support: aabd@ecn.ulaval.ca
-d Version : 1.1.4
+d Version : 1.1.5
 d License : GPL-3.0-or-later
 d
 d Deaton (1988, 1990, 1997 ch. 5): within-cluster first stage, between-cluster
@@ -14,7 +14,8 @@ d design (svyset), design bootstrap of both stages, diagnostics (duvmdiag,
 d estat diagnostics), dialog box, Engel curves after estimation (predict,
 d estat engel), examples of the help run from links (duvm_examples),
 d correction of the unit values for the selection of the buyers
-d (selection, selgoods(), selvars(): Heckman, probit in the standard errors).
+d (selection, selgoods(), selvars(): Heckman, probit in the standard errors),
+d elasticities of the household, of the individual or of the market.
 d Option compat reproduces the code published with Deaton's book.
 d
 d Requires: Stata 14.2 or later

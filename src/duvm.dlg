@@ -1,5 +1,5 @@
 /*
-    duvm.dlg  —  dialog for duvm 1.1.4 (Deaton's unit-value model)
+    duvm.dlg  —  dialog for duvm 1.1.5 (Deaton's unit-value model)
     db duvm
 
     Tabs, as in Stata's estimation dialogs:
@@ -679,6 +679,11 @@ BEGIN
   TEXT     tx_save     20  255  620   ., label("File (the extension gives the format: .docx .tex .xlsx .csv .md):")
   FILE     fi_save     20  275  620   ., label("Browse...") save option(saveres) ///
            filter("Word (*.docx)|*.docx|LaTeX (*.tex)|*.tex|Excel (*.xlsx)|*.xlsx|CSV (*.csv)|*.csv|Markdown (*.md)|*.md")
+
+  GROUPBOX gb_ref      10  315  640  87, label("Elasticities")
+  RADIO    rb_hh       20  335  610   ., first label("Households (the default): at the mean budget shares of the households")
+  RADIO    rb_ind      20  357  610   ., label("Individuals: each household counts for its weight times its size")
+  RADIO    rb_mkt      20  379  610   ., last label("Market: at the aggregate budget shares, each household weighted by its expenditure")
 END
 
 PROGRAM command
@@ -861,6 +866,12 @@ BEGIN
         put " shortcut"
       }
       put ")"
+    }
+    if rpt.rb_ind {
+      put " elasticities(individuals)"
+    }
+    if rpt.rb_mkt {
+      put " elasticities(market)"
     }
     optionarg /hidedefault rpt.sp_level
     optionarg /hidedefault rpt.sp_dec

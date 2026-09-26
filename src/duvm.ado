@@ -1,4 +1,4 @@
-*! duvm 1.1.4  2026-09-26  Abdelkrim Araar
+*! duvm 1.1.5  2026-09-26  Abdelkrim Araar
 *! Deaton's unit-value model: quality-corrected price and expenditure
 *! elasticities from budget shares and unit values, cluster-level prices.
 *! Model: Deaton (1988, 1990, 1997 ch. 5). Mata engine, closed-form estimator.
@@ -18,7 +18,7 @@ program define duvm, eclass
           HWeight(varname numeric) SELection SELGoods(namelist) SELVars(string) CSB(string) QOTHer(real 0.25) ///
           NOSYMmetry COMPAT COMPATFlags(string) VCE(string) Level(cilevel) ///
           DEC(integer 3) DREGres(integer 0) BOOT(integer 0) HGroup(varname) SEall ///
-          SAVEres(string) STars NONBuyers(string) ///
+          SAVEres(string) STars NONBuyers(string) ELASticities(string) ///
           QUARD4(passthru) INISave(passthru) XFIL(passthru) GMODifier(passthru) noTABle ]
 
     * ---- goods and their variables ----
@@ -198,6 +198,21 @@ program define duvm, eclass
     }
     local vnum = cond("`vtype'" == "none", 0, cond("`vtype'" == "cluster", 1, cond("`vtype'" == "svy", 2, 3)))
 
+    * ---- the elasticities: of the household (each household counts for its
+    * weight), of the individual (its weight times its size) or of the market
+    * (the elasticities at the aggregate budget shares, each household counting
+    * for its weight times its total expenditure) ----
+    local elasticities = lower(trim("`elasticities'"))
+    if "`elasticities'" == "" | strpos("households", "`elasticities'") == 1 local elasticities "households"
+    else if strpos("individuals", "`elasticities'") == 1 local elasticities "individuals"
+    else if strpos("market", "`elasticities'") == 1 local elasticities "market"
+    else {
+        di as err "elasticities(): households, individuals or market"
+        exit 198
+    }
+    local reference = cond("`elasticities'" == "individuals", "individuals", "households")
+    local mkt = ("`elasticities'" == "market")
+
     * ---- weights: [w=] or hweight() ----
     if "`weight'" != "" & "`hweight'" != "" {
         di as err "specify either [weight=] or hweight(), not both"
@@ -216,6 +231,18 @@ program define duvm, eclass
     else {
         qui gen double `wt' = 1
         local wtype ""
+    }
+    * individuals: the weight times the household size; e(wexp) holds the weight
+    * used, so that predict and estat rebuild the same one
+    local wexpost ""
+    if "`reference'" == "individuals" {
+        qui replace `wt' = `wt' * `hhsize'
+        if "`weight'" != ""       local wexpost "= (`=trim("`wexp'")') * (`hhsize')"
+        else if "`hweight'" != "" local wexpost "= (`hweight') * (`hhsize')"
+        else {
+            local wexpost "= `hhsize'"
+            local wtype "aweight"
+        }
     }
 
     * ---- regressors of the first stage ----
@@ -333,7 +360,7 @@ program define duvm, eclass
     mata: _duvm_run("`R'", "`wvars'", "`uvvars'", "`X'", `sel', "`zall'", "`selgstr'", "`zmstr'", "`wt'", ///
                     "`cluster'", "`reg1'", "`sub1'", "`st1'", "`ps1'", "`fp1'", "`touse'", ///
                     "`cf'", "`nosymmetry'" == "", `qother', ///
-                    `vnum', `reps', `seed', "`shortcut'" != "")
+                    `vnum', `reps', `seed', "`shortcut'" != "", `mkt')
 
     * ---- own-price elasticities by group (re-estimation on each subsample) ----
     if "`hgroup'" != "" {
@@ -341,6 +368,7 @@ program define duvm, eclass
         qui levelsof `hgroup' if `touse', local(glevs)
         local ng : word count `glevs'
         local gopts hhsize(`hhsize') expend(`expend') cluster(`cluster') `selection' qother(`qother') `nosymmetry' nonbuyers(`nonbuyers')
+        local gopts `gopts' elasticities(`elasticities')
         if `sel' local gopts `gopts' selgoods(`selgoods0')
         if `"`selvars'"' != "" local gopts `gopts' selvars(`selvars')
         if "`compatflags'" != "" local gopts `gopts' compatflags(`compatflags')
@@ -413,8 +441,10 @@ program define duvm, eclass
     ereturn local nonbuyers "`nonbuyers'"
     ereturn local clustvar "`cluster'"
     ereturn local wtype "`wtype'"
-    if "`weight'" != "" ereturn local wexp "`exp'"
+    if "`wexpost'" != "" ereturn local wexp "`wexpost'"
+    else if "`weight'" != "" ereturn local wexp "`exp'"
     else if "`hweight'" != "" ereturn local wexp "= `hweight'"
+    ereturn local elasticities "`elasticities'"
     ereturn local region "`region'"
     ereturn local subround "`subround'"
     if "`compat'" != "" ereturn local compat "compat"
@@ -616,6 +646,9 @@ program define _duvm_display
     di as txt "Cluster variable: " as res "`e(clustvar)'" as txt _col(49) "Weights" _col(67) "= " as res "`wtxt'"
     local sy = cond("`e(symmetry)'" == "approx", "imposed (Deaton's approximation)", "not imposed")
     di as txt "Symmetry: " as res "`sy'" as txt _col(49) "Quality elast., other goods = " as res %5.3f e(qother)
+    if "`e(elasticities)'" == "individuals" di as txt "Elasticities: " as res "individuals" as txt " (each household counts for its weight x its size)"
+    else if "`e(elasticities)'" == "market" di as txt "Elasticities: " as res "market" as txt " (at the aggregate budget shares: weight x total expenditure)"
+    else di as txt "Elasticities: " as res "households" as txt " (at the mean budget shares of the households)"
     if "`e(compatflags)'" != "" di as txt "Mode: " as res "compatflags(`e(compatflags)')"
     else if "`e(compat)'" != "" di as txt "Mode: " as res "compat" as txt " (the formulas of the Stata code published with Deaton, 1997)"
     if "`e(selection)'" != "" {
@@ -752,10 +785,12 @@ struct duvm_d {                         // the data
     real colvector selg                     // goods corrected (0/1)
     real colvector w, cid, reg, sub, strat, psu, fpc
     real scalar    hasl, N, C               // hasl: selection correction of the unit values
+    real scalar    mkt                      // market elasticities: shares weighted by expenditure
 }
 
 struct duvm_c {                         // first stage + cluster-level series
     real scalar    N, C, M, k, kk, p, hasl  // kk = k + hasl regressors in the unit-value equation
+    real scalar    mkt                      // the mean shares weighted by total expenditure
     real matrix    beta0, beta1
     real colvector wbar, b0, b1, ome, sig, chi
     real matrix    y0c, y1c, n0c, n1c, D
@@ -936,7 +971,12 @@ struct duvm_c scalar _duvm_stage1(struct duvm_d scalar d, real rowvector cf)
     c.N = N; c.C = C; c.M = M; c.k = k
     c.beta0 = J(k, M, .); c.beta1 = J(k, M, .)
     c.b0 = J(M, 1, .); c.b1 = J(M, 1, .); c.ome = J(M, 1, .); c.sig = J(M, 1, .); c.chi = J(M, 1, .)
-    c.wbar = (quadcross(w, W) / sum(w))'
+    // the budget shares at which the elasticities are evaluated: the weighted
+    // means (households, individuals), or the aggregate shares, total spending
+    // on the good over total spending (market): weights times expenditure x
+    c.mkt = d.mkt
+    if (d.mkt) c.wbar = (quadcross(w :* exp(X[., 1]), W) / sum(w :* exp(X[., 1])))'
+    else       c.wbar = (quadcross(w, W) / sum(w))'
     // kept for the influence functions
     c.Xs = X; c.Ws = W; c.ws = w; c.info = info; c.cl = cl
     c.MU = J(N, M, .); c.M0 = J(N, M, .); c.E0 = J(N, M, .); c.E1 = J(N, M, .)
@@ -1376,12 +1416,14 @@ real matrix _duvm_if(struct duvm_c scalar c, struct duvm_r scalar r, real matrix
 {
     real scalar M, k, kk, p, C, N, q, i, j, s, n, mi, mj, jj
     real matrix Phi, IF, Cb0, Cb1, CG, xt0, xt1, zt1, Xa, Xd, mu, XXj
-    real colvector w, ok, yi, yj, Ji, Jj, m, sw, wm
+    real colvector w, ok, yi, yj, Ji, Jj, m, sw, wm, wsh
 
     M = c.M; k = c.k; kk = c.kk; p = c.p; C = c.C; N = c.N
     q = 2*M*M + 5*M
     Phi = J(C, q, 0)
     w = c.ws
+    // the weights of the mean shares (times expenditure for the market)
+    wsh = (c.mkt ? w :* exp(c.Xs[., 1]) : w)
 
     // household-level influence functions, summed by cluster
     Cb0 = J(C, k*M, .); Cb1 = J(C, kk*M, .); CG = J(C, p*M, 0)
@@ -1418,7 +1460,7 @@ real matrix _duvm_if(struct duvm_c scalar c, struct duvm_r scalar r, real matrix
             Phi[., 2*M*M + j]     = Phi[., 2*M*M + j]     + CG[., (j-1)*p+1..j*p] * c.dome[j, .]'
             Phi[., 2*M*M + M + j] = Phi[., 2*M*M + M + j] + CG[., (j-1)*p+1..j*p] * c.dchi[j, .]'
         }
-        Phi[., 2*M*M + 4*M + j] = panelsum(w :* (c.Ws[., j] :- r.wbar[j]), c.info) / sum(w)
+        Phi[., 2*M*M + 4*M + j] = panelsum(wsh :* (c.Ws[., j] :- r.wbar[j]), c.info) / sum(wsh)
         Phi[., 2*M*M + 2*M + j] = Cb0[., (j-1)*k+1]
         Phi[., 2*M*M + 3*M + j] = Cb1[., (j-1)*kk+1]
     }
@@ -1690,7 +1732,7 @@ void _duvm_boot(struct duvm_d scalar d, struct duvm_r scalar r, real scalar reps
             }
             db.W = d.W[idx, .]; db.UV = d.UV[idx, .]; db.X = d.X[idx, .]
             // selection: the probit is estimated again in every draw
-            db.Zx = d.Zx[idx, .]; db.hasl = d.hasl; db.zmask = d.zmask; db.selg = d.selg
+            db.Zx = d.Zx[idx, .]; db.hasl = d.hasl; db.zmask = d.zmask; db.selg = d.selg; db.mkt = d.mkt
             db.w = d.w[idx]; db.reg = d.reg[idx]; db.sub = d.sub[idx]
             db.cid = _duvm_dense(cidb); db.N = rows(idx); db.C = max(db.cid)
             db.strat = d.strat[idx]; db.psu = d.psu[idx]; db.fpc = d.fpc[idx]
@@ -1731,7 +1773,8 @@ void _duvm_run(string scalar Rname, string scalar wvars, string scalar uvvars,
                string scalar clvar, string scalar regvar, string scalar subvar,
                string scalar stvar, string scalar psvar, string scalar fpcvar,
                string scalar touse, string scalar cfstr, real scalar sym, real scalar qother,
-               real scalar vtype, real scalar reps, real scalar seed, real scalar shortcut)
+               real scalar vtype, real scalar reps, real scalar seed, real scalar shortcut,
+               real scalar mkt)
 {
     struct duvm_d scalar d
     struct duvm_c scalar c
@@ -1741,6 +1784,7 @@ void _duvm_run(string scalar Rname, string scalar wvars, string scalar uvvars,
 
     cf = strtoreal(tokens(cfstr))
     d = _duvm_load(wvars, uvvars, Xvars, sel, zvars, selgs, zms, wtvar, clvar, regvar, subvar, stvar, psvar, fpcvar, touse)
+    d.mkt = mkt
     c = _duvm_stage1(d, cf)
     r = _duvm_stage2(c, (1::c.C), cf, sym, qother)
     if (vtype == 3) {

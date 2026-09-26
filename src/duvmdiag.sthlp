@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.1.4  26sep2026}{...}
+{* *! version 1.1.5  26sep2026}{...}
 {vieweralsosee "duvm" "help duvm"}{...}
 {title:Title}
 
@@ -7,7 +7,7 @@
 {p2col:{cmd:duvmdiag} {hline 2}}Diagnostics of the unit-value model before estimating it{p_end}
 {p2colreset}{...}
 
-{p 4 4 2}{txt}Package {cmd:duvm}, version {res}1.1.4{txt} (26/09/2026) {c |} Stata {res}14.2{txt} or later {c |} first release {res}1.0.0{txt} (24/09/2026){p_end}
+{p 4 4 2}{txt}Package {cmd:duvm}, version {res}1.1.5{txt} (26/09/2026) {c |} Stata {res}14.2{txt} or later {c |} first release {res}1.0.0{txt} (24/09/2026){p_end}
 
 
 {title:Syntax}
