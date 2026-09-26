@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0.1  24sep2026}{...}
+{* *! version 1.1.0  26sep2026}{...}
 {vieweralsosee "duvm" "help duvm"}{...}
 {title:Title}
 
@@ -40,6 +40,22 @@ come from outside the cluster. Each case is also reported as a warning, with
 what {helpb duvm##options:nonbuyers()} does with it: imputed unit values bias
 the quality elasticity toward zero, the more so the rarer the good.
 
+{pstd}
+With {helpb duvm##options:selection}, Table D3 reports how well the correction
+of the unit values is identified, good by good: the share of buyers, the
+McFadden pseudo-R2 of the probit of purchase, the households it predicts with
+probability 0 or 1 (separation: the coefficients of the separating variables
+drift, the Mills ratio does not), the variance inflation factor of the
+quality elasticity due to the Mills ratio, 1/(1-rho^2) with rho the
+within-cluster correlation of the Mills ratio and log expenditure given the
+other regressors among the reporters, and the number of probit-only variables;
+after estimation, also the coefficient of the Mills ratio and its z. A factor
+above 10 means that the Mills ratio is almost collinear with log expenditure:
+the quality elasticity then rests on the curvature of the probit, and the
+linearized standard errors of the good understate its uncertainty; the warning
+recommends leaving the good uncorrected with {opt selgoods()}, an exclusion
+variable in {opt selvars()}, or at least {cmd:vce(bootstrap)}.
+
 
 {title:Stored results}
 
@@ -48,6 +64,7 @@ the quality elasticity toward zero, the more so the rarer the good.
 {synopt:{cmd:r(cond_Sf)}}condition number of the corrected moment matrix{p_end}
 {synopt:{cmd:r(mineig_Sf)}}its smallest eigenvalue{p_end}
 {synopt:{cmd:r(sym_dist)}}||B_sym - B|| / ||B||{p_end}
+{synopt:{cmd:r(sel_diag)}}Table D3 ({opt selection}): buyers, % buyers, pseudo-R2, perfectly predicted, variance inflation factor of the quality elasticity{p_end}
 
 
 {title:Example}

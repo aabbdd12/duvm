@@ -1,4 +1,4 @@
-*! _duvm_engel 1.0.1  2026-09-24  Abdelkrim Araar
+*! _duvm_engel 1.1.0  2026-09-26  Abdelkrim Araar
 *! Engel curves after duvm: the parameters of the curves of one good and their
 *! linearized covariance. Used by predict (duvm_p) and estat engel.
 *!
@@ -105,10 +105,17 @@ program define _duvm_engel, rclass
             local X `X' `x`i''
         }
         tempname V Vs chk
+        * selection: the unit-value slope is that of the equation with the Mills
+        * ratio, and its influence function holds the term of the probit
+        * (good by good: selgoods() and the probit-only variables of the good)
+        local sel 0
+        local sgoods "`e(selgoods)'"
+        if "`e(selection)'" != "" local sel : list g in sgoods
+        local zg ""
+        if `sel' local zg "`e(sel_z_`g')'"
         mata: _duvme_V("`shv'", "`uvv'", "`lnx'", "`X'", "`wt'", "`e(clustvar)'", "`psu'", "`st'", "`fp'", ///
-            "`es'", `wbar', `L0', `vbar', `L1', `good', "`V'", "`Vs'", "`chk'")
-        * the slopes recomputed here must be those of duvm (they are not after
-        * csb(1), whose share equations also hold the inverse Mills ratio)
+            "`es'", `wbar', `L0', `vbar', `L1', `good', "`V'", "`Vs'", "`chk'", `sel', "`zg'")
+        * the slopes recomputed here must be those of duvm
         return scalar dev_b0 = el(`chk', 1, 1)
         return scalar dev_b1 = el(`chk', 1, 2)
         matrix colnames `V' = a0 b0 a1 b1
@@ -131,12 +138,13 @@ void _duvme_V(string scalar wv, string scalar uv, string scalar lxv, string scal
               string scalar wtv, string scalar clv, string scalar psuv, string scalar stv,
               string scalar fpv, string scalar esv, real scalar wbar, real scalar L0,
               real scalar vbar, real scalar L1, real scalar good,
-              string scalar Vname, string scalar Vsname, string scalar chkname)
+              string scalar Vname, string scalar Vsname, string scalar chkname,
+              real scalar hasl, string scalar zxv)
 {
-    real colvector es, w, u, lx, wt, cl, psu, st, fp, ord, sel
-    real matrix X, Phi, B0, B1, info, Vs, J
+    real colvector es, w, u, lx, wt, cl, psu, st, fp, ord, sel, dd, lamv, dlam, sw, idx
+    real matrix X, Phi, B0, B1, info, Vs, J, Zx, Zp, IFg, mu, DZ, lam
     real rowvector chk
-    real scalar n, b0, b1
+    real scalar n, b0, b1, okp
 
     es = st_data(., esv)
     sel = selectindex(es :== 1)
@@ -151,9 +159,24 @@ void _duvme_V(string scalar wv, string scalar uv, string scalar lxv, string scal
     info = panelsetup(cl, 1)
     B0 = st_matrix("e(beta0)"); B1 = st_matrix("e(beta1)")
     chk = J(1, 2, 0)
+    // selection: the probit of duvm (same regressors, same algorithm, so the
+    // same Mills ratio): constant, x, cluster means of x, probit-only variables
+    lam = J(n, 0, .); DZ = J(n, 0, .); IFg = J(n, 0, .)
+    if (hasl) {
+        if (zxv != "") Zx = st_data(sel, tokens(zxv))[ord, .]
+        else           Zx = J(n, 0, .)
+        idx = _duvme_expand(info)
+        sw = panelsum(wt, info)
+        mu = panelsum(X :* wt, info) :/ sw
+        Zp = (J(n, 1, 1), X, mu[idx, .], Zx)
+        dd = (w :> 0) :& (w :< .)
+        (void) _duvme_probit(dd, Zp, wt, lamv, dlam, IFg, okp)
+        lam = lamv
+        DZ = dlam :* Zp
+    }
     // the six statistics (wbar, L0, b0, vbar, L1, b1) and their covariance
-    Phi = (_duvme_if(w, J(n, 1, 1), lx, X, wt, info, wbar, L0, B0[1, good], chk, 1),
-           _duvme_if(u, (u :< .), lx, X, wt, info, vbar, L1, B1[1, good], chk, 2))
+    Phi = (_duvme_if(w, J(n, 1, 1), lx, X, wt, info, wbar, L0, B0[1, good], chk, 1, J(n, 0, .), J(n, 0, .), J(n, 0, .)),
+           _duvme_if(u, (u :< .), lx, X, wt, info, vbar, L1, B1[1, good], chk, 2, lam, DZ, IFg))
     Vs = _duvme_vagg(Phi, psu, st, fp)
     // (a0, b0, a1, b1): a0 = wbar - b0 L0, a1 = vbar - b1 L1
     b0 = B0[1, good]; b1 = B1[1, good]
@@ -164,14 +187,20 @@ void _duvme_V(string scalar wv, string scalar uv, string scalar lxv, string scal
 }
 
 // one equation: influence functions of the mean of y, the mean of ln x and the
-// within-cluster slope b, over the sample marked by m
-real matrix _duvme_if(real colvector y, real colvector m, real colvector lx, real matrix X,
+// within-cluster slope b, over the sample marked by m. With a Mills ratio lam
+// (selection), the equation holds it as a regressor, and the influence
+// function of the slope holds the term of the probit: DZ = dlam z', IFg the
+// influence functions of the probit coefficients (as in duvm's _duvm_if)
+real matrix _duvme_if(real colvector y, real colvector m, real colvector lx, real matrix X0,
                       real colvector wt, real matrix info, real scalar ybar, real scalar Lbar,
-                      real scalar bduvm, real rowvector chk, real scalar slot)
+                      real scalar bduvm, real rowvector chk, real scalar slot,
+                      real matrix lam, real matrix DZ, real matrix IFg)
 {
-    real colvector wm, sw, ys, e, ifb, ifm, ifl
-    real matrix Xt, XX, sx
-    real scalar W, b
+    real colvector wm, sw, ys, e, ifb, ifm, ifl, bb
+    real matrix X, Xt, XX, sx, IF
+    real scalar W, b, kk
+    X = (X0, lam)
+    kk = cols(X)
     wm = wt :* m
     ys = editmissing(y, 0)
     sw = panelsum(wm, info)
@@ -181,14 +210,57 @@ real matrix _duvme_if(real colvector y, real colvector m, real colvector lx, rea
     Xt = (X - sx[_duvme_expand(info), .]) :* m
     ys = (ys - (panelsum(ys :* wm, info) :/ sw)[_duvme_expand(info)]) :* m
     XX = invsym(quadcross(Xt, wm, Xt))
-    b = (XX * quadcross(Xt, wm, ys))[1]
+    bb = XX * quadcross(Xt, wm, ys)
+    b = bb[1]
     chk[slot] = abs(b - bduvm) / (1 + abs(bduvm))
-    e = (ys - Xt * (XX * quadcross(Xt, wm, ys))) :* m
-    ifb = ((Xt :* (wm :* e)) * XX)[., 1]
+    e = (ys - Xt * bb) :* m
+    IF = (Xt :* (wm :* e)) * XX
+    if (cols(lam)) IF = IF - IFg * (quadcross(Xt, wm, bb[kk] :* DZ)' * XX)
+    ifb = IF[., 1]
     W = sum(wm)
     ifm = wm :* (editmissing(y, 0) :- ybar) / W
     ifl = wm :* (lx :- Lbar) / W
     return((ifm, ifl, ifb))
+}
+
+// the probit of duvm (_duvm_probit in duvm.ado, same code: the Mata of an
+// ado-file is not visible from another)
+real colvector _duvme_probit(real colvector dd, real matrix Z, real colvector w,
+                             real colvector lam, real colvector dlam, real matrix IF,
+                             real scalar ok)
+{
+    real colvector g, xb, P, f, r, a, step
+    real matrix Ii
+    real scalar it, n, n1
+    n = rows(dd)
+    g = J(cols(Z), 1, 0)
+    n1 = sum(dd)
+    ok = (n1 > 0 & n1 < n)
+    if (!ok) {
+        lam = J(n, 1, 0); dlam = lam; IF = J(n, cols(Z), 0)
+        return(g)
+    }
+    for (it = 1; it <= 200; it++) {
+        xb = Z * g
+        P  = rowmin((rowmax((normal(xb), J(n, 1, 1e-15))), J(n, 1, 1 - 1e-15)))
+        f  = normalden(xb)
+        r  = (dd - P) :* f :/ (P :* (1 :- P))
+        a  = (f :^ 2) :/ (P :* (1 :- P))
+        Ii = invsym(quadcross(Z, w :* a, Z))
+        step = Ii * quadcross(Z, w :* r)
+        g = g + step
+        if (max(abs(step)) < 1e-11) break
+    }
+    xb = Z * g
+    P  = rowmin((rowmax((normal(xb), J(n, 1, 1e-15))), J(n, 1, 1 - 1e-15)))
+    f  = normalden(xb)
+    r  = (dd - P) :* f :/ (P :* (1 :- P))
+    a  = (f :^ 2) :/ (P :* (1 :- P))
+    Ii = invsym(quadcross(Z, w :* a, Z))
+    lam  = exp(lnnormalden(xb) - lnnormal(xb))
+    dlam = -lam :* (xb + lam)
+    IF   = ((w :* r) :* Z) * Ii
+    return(g)
 }
 
 real colvector _duvme_expand(real matrix info)

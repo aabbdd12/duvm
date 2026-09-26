@@ -1,4 +1,4 @@
-*! duvm 1.0.1  2026-09-24  Abdelkrim Araar
+*! duvm 1.1.0  2026-09-26  Abdelkrim Araar
 *! Deaton's unit-value model: quality-corrected price and expenditure
 *! elasticities from budget shares and unit values, cluster-level prices.
 *! Model: Deaton (1988, 1990, 1997 ch. 5). Mata engine, closed-form estimator.
@@ -15,7 +15,7 @@ program define duvm, eclass
     syntax anything(name=namelist id="goods") [if] [in] [aweight fweight pweight iweight] , ///
         HHsize(varname numeric) EXPend(varname numeric) CLuster(varname) ///
         [ REGion(varname) SUBround(varname) INDCAT(varlist) INDCON(varlist numeric) ///
-          HWeight(varname numeric) CSB(integer 0) QOTHer(real 0.25) ///
+          HWeight(varname numeric) SELection SELGoods(namelist) SELVars(string) CSB(string) QOTHer(real 0.25) ///
           NOSYMmetry COMPAT COMPATFlags(string) VCE(string) Level(cilevel) ///
           DEC(integer 3) DREGres(integer 0) BOOT(integer 0) HGroup(varname) SEall ///
           SAVEres(string) STars NONBuyers(string) ///
@@ -56,6 +56,80 @@ program define duvm, eclass
     if "`nonbuyers'" == "" local nonbuyers = cond("`compat'" != "", "asis", "drop")
     if !inlist("`nonbuyers'", "drop", "average", "asis") {
         di as err "nonbuyers(`nonbuyers') not allowed; use nonbuyers(drop), nonbuyers(average) or nonbuyers(asis)"
+        exit 198
+    }
+
+    * ---- selection correction of the unit values (Heckman), see the help ----
+    if `"`csb'"' != "" {
+        di as err "csb() was replaced by selection in duvm 1.1: the correction now applies to the"
+        di as err "unit values of the buyers (see help duvm, option selection)"
+        exit 198
+    }
+    * the goods corrected (all by default, or selgoods()), and the variables of
+    * each good's probit beyond x and its cluster means: selvars() holds
+    * segments separated by ";", each "vars" (every corrected good) or
+    * "good: vars" (that good only)
+    if "`selgoods'" != "" | `"`selvars'"' != "" local selection "selection"
+    local sel = ("`selection'" != "")
+    local zall ""
+    local selgstr ""
+    local zmstr ""
+    if `sel' {
+        if "`selgoods'" == "" local selgoods `goods'
+        foreach g of local selgoods {
+            if !`: list g in goods' {
+                di as err "selgoods(): `g' is not one of the goods"
+                exit 198
+            }
+        }
+        local selgoods : list uniq selgoods
+        local zcom ""
+        foreach g of local goods {
+            local z_`g' ""
+        }
+        local rest `"`selvars'"'
+        while `"`rest'"' != "" {
+            gettoken seg rest : rest, parse(";")
+            local seg = trim(`"`seg'"')
+            if `"`seg'"' == ";" | `"`seg'"' == "" continue
+            if strpos(`"`seg'"', ":") {
+                local gg = trim(substr(`"`seg'"', 1, strpos(`"`seg'"', ":") - 1))
+                local vv = trim(substr(`"`seg'"', strpos(`"`seg'"', ":") + 1, .))
+                if !`: list gg in selgoods' {
+                    di as err "selvars(): `gg' is not a corrected good (see selgoods())"
+                    exit 198
+                }
+                unab vv : `vv'
+                confirm numeric variable `vv'
+                local z_`gg' `z_`gg'' `vv'
+            }
+            else {
+                unab vv : `seg'
+                confirm numeric variable `vv'
+                local zcom `zcom' `vv'
+            }
+        }
+        foreach g of local selgoods {
+            local z_`g' : list zcom | z_`g'
+            local zall : list zall | z_`g'
+        }
+        * for the engine: goods corrected (0/1) and, good by good, which of
+        * the variables in zall enter its probit (row by row)
+        foreach g of local goods {
+            local on : list g in selgoods
+            local selgstr `selgstr' `on'
+            foreach v of local zall {
+                local inz : list v in z_`g'
+                local zmstr `zmstr' `=`on' & `inz''
+            }
+        }
+    }
+    if `sel' & "`nonbuyers'" != "drop" {
+        di as err "selection requires nonbuyers(drop): the correction applies to the unit values of the buyers"
+        exit 198
+    }
+    if `sel' & "`compat'" != "" {
+        di as err "selection is not available with compat or compatflags()"
         exit 198
     }
 
@@ -135,7 +209,7 @@ program define duvm, eclass
     * ---- estimation sample: regressors non-missing, weight > 0 ----
     * (a missing budget share is a non-buyer: it does not drop the household)
     marksample touse
-    markout `touse' `X' `wt' `cluster' `bstrata' `bpsu'
+    markout `touse' `X' `wt' `cluster' `bstrata' `bpsu' `zall'
     qui replace `touse' = 0 if `wt' <= 0 | `wt' >= .
     qui count if `touse'
     local N = r(N)
@@ -162,28 +236,6 @@ program define duvm, eclass
         }
     }
 
-    * ---- selection correction: inverse Mills ratio per good ----
-    local lamvars ""
-    if `csb' == 1 {
-        foreach g of local goods {
-            tempvar d xb lam`g'
-            qui gen byte `d' = (`s`g'' > 0) if `touse'
-            capture qui probit `d' `X' [pw=`wt'] if `touse'
-            if _rc {
-                qui gen double `lam`g'' = 0 if `touse'
-            }
-            else {
-                qui predict double `xb' if `touse', xb
-                qui gen double `lam`g'' = normalden(`xb')/normal(`xb') if `touse'
-                if `dregres' == 1 {
-                    di as txt _n "Probit for reporting a positive expenditure on `g'"
-                    probit, coeflegend
-                }
-            }
-            local lamvars `lamvars' `lam`g''
-        }
-    }
-
     * ---- cluster-level design for the purge: region and subround dummies ----
     tempvar reg1 sub1
     if "`region'" != ""   qui gen double `reg1' = `region'
@@ -205,18 +257,18 @@ program define duvm, eclass
             di as txt _n "log unit value of `g'"
             areg `u`g'' `X' [aw=`wt'] if `touse', absorb(`cluster')
         }
+        if `sel' di as txt "(selection: the unit-value regressions above omit the Mills ratio; the"
+        if `sel' di as txt " corrected coefficients are in e(beta1), e(sel_theta) and e(sel_gamma))"
         di as txt _n "The budget-share regressions"
         foreach g of local goods {
-            local lg ""
-            if `csb' == 1 local lg `lam`g''
             di as txt _n "budget share of `g'"
-            areg `s`g'' `X' `lg' [aw=`wt'] if `touse', absorb(`cluster')
+            areg `s`g'' `X' [aw=`wt'] if `touse', absorb(`cluster')
         }
     }
 
     * ---- the engine ----
     tempname R
-    mata: _duvm_run("`R'", "`wvars'", "`uvvars'", "`X'", "`lamvars'", "`wt'", ///
+    mata: _duvm_run("`R'", "`wvars'", "`uvvars'", "`X'", `sel', "`zall'", "`selgstr'", "`zmstr'", "`wt'", ///
                     "`cluster'", "`reg1'", "`sub1'", "`st1'", "`ps1'", "`fp1'", "`touse'", ///
                     "`cf'", "`nosymmetry'" == "", `qother', ///
                     `vnum', `reps', `seed', "`shortcut'" != "")
@@ -226,7 +278,9 @@ program define duvm, eclass
         tempname G
         qui levelsof `hgroup' if `touse', local(glevs)
         local ng : word count `glevs'
-        local gopts hhsize(`hhsize') expend(`expend') cluster(`cluster') csb(`csb') qother(`qother') `nosymmetry' nonbuyers(`nonbuyers')
+        local gopts hhsize(`hhsize') expend(`expend') cluster(`cluster') `selection' qother(`qother') `nosymmetry' nonbuyers(`nonbuyers')
+        if `sel' local gopts `gopts' selgoods(`selgoods')
+        if `"`selvars'"' != "" local gopts `gopts' selvars(`selvars')
         if "`compatflags'" != "" local gopts `gopts' compatflags(`compatflags')
         else if "`compat'" != "" local gopts `gopts' compat
         foreach o in region subround indcat indcon hweight {
@@ -283,7 +337,7 @@ program define duvm, eclass
     mata: _duvm_b("`R'", "`goods'", "`b'", "`V'")
     if `duvm_hasV' ereturn post `b' `V', obs(`duvm_N') esample(`touse')
     else           ereturn post `b', obs(`duvm_N') esample(`touse')
-    mata: _duvm_post("`R'", "`goods'", "`Xnames'")
+    mata: _duvm_post("`R'", "`goods'", "`Xnames'", "`zall'")
     ereturn local cmd "duvm"
     ereturn local cmdline `"duvm `0'"'
     ereturn local estat_cmd "duvm_estat"
@@ -305,7 +359,14 @@ program define duvm, eclass
     if "`compatflags'" != "" ereturn local compatflags "`compatflags'"
     if "`nosymmetry'" != "" ereturn local symmetry "none"
     else ereturn local symmetry "approx"
-    if `csb' == 1 ereturn local csb "imr"
+    if `sel' {
+        ereturn local selection "heckman"
+        ereturn local selgoods "`selgoods'"
+        ereturn local selvars `"`selvars'"'
+        foreach g of local selgoods {
+            ereturn local sel_z_`g' "`z_`g''"
+        }
+    }
     if "`vtype'" == "bootstrap" {
         ereturn local vce "bootstrap"
         ereturn local vcetype "Bootstrap"
@@ -495,7 +556,13 @@ program define _duvm_display
     di as txt "Symmetry: " as res "`sy'" as txt _col(49) "Quality elast., other goods = " as res %5.3f e(qother)
     if "`e(compatflags)'" != "" di as txt "Mode: " as res "compatflags(`e(compatflags)')"
     else if "`e(compat)'" != "" di as txt "Mode: " as res "compat" as txt " (the formulas of the Stata code published with Deaton, 1997)"
-    if "`e(csb)'" != ""    di as txt "Selection correction: inverse Mills ratio in the share equations"
+    if "`e(selection)'" != "" {
+        di as txt "Selection: " as res "Heckman correction of the unit values" as txt " of " as res "`e(selgoods)'" ///
+            as txt " (probit on x and its cluster means)"
+        foreach g in `e(selgoods)' {
+            if "`e(sel_z_`g')'" != "" di as txt "   probit of `g' also on: " as res "`e(sel_z_`g')'"
+        }
+    }
     if "`e(nonbuyers)'" == "average" di as txt "Non-buyers: unit value = mean of the buyers of the cluster (nonbuyers(average))"
     if "`e(nonbuyers)'" == "asis"    di as txt "Non-buyers: unit values as in the data (nonbuyers(asis))"
     if "`e(vce)'" == "bootstrap" {
@@ -548,6 +615,20 @@ program define _duvm_display
     else {
         matrix `T' = e(elast_qual)
         matrix rownames `T' = "Elasticity"
+    }
+    * selection: the coefficient of the Mills ratio in the unit-value equation
+    if "`e(selection)'" != "" {
+        tempname TS
+        capture confirm matrix e(se_sel_theta)
+        if !_rc {
+            matrix `TS' = e(sel_theta) \ e(se_sel_theta)
+            matrix rownames `TS' = "Mills ratio" "  std. err."
+        }
+        else {
+            matrix `TS' = e(sel_theta)
+            matrix rownames `TS' = "Mills ratio"
+        }
+        matrix `T' = `T' \ `TS'
     }
     matrix colnames `T' = `goods'
     matlist `T', border(rows) format(`fmt') twidth(14) left(2) title("Table 3: Quality elasticities, b1 = dln(unit value)/dln(expenditure)")
@@ -604,13 +685,15 @@ mata:
 mata set matastrict on
 
 struct duvm_d {                         // the data
-    real matrix    W, UV, X, LAM
+    real matrix    W, UV, X, Zx             // Zx: variables of the selection probits only
+    real matrix    zmask                    // M x cols(Zx): which enter the probit of good j
+    real colvector selg                     // goods corrected (0/1)
     real colvector w, cid, reg, sub, strat, psu, fpc
-    real scalar    hasl, N, C
+    real scalar    hasl, N, C               // hasl: selection correction of the unit values
 }
 
 struct duvm_c {                         // first stage + cluster-level series
-    real scalar    N, C, M, k
+    real scalar    N, C, M, k, kk, p, hasl  // kk = k + hasl regressors in the unit-value equation
     real matrix    beta0, beta1
     real colvector wbar, b0, b1, ome, sig, chi
     real matrix    y0c, y1c, n0c, n1c, D
@@ -618,6 +701,13 @@ struct duvm_c {                         // first stage + cluster-level series
     real matrix    Xs, Ws, info, MU, M0, E0, E1, XX0, XX1, xb0c, xb1c
     real colvector ws, cl, psu_c, strat_c, fpc_c
     real colvector norm0, norm1, norm01, df0, df1, df01, N0, N1, N01
+    // selection (Heckman on the unit values): per good j, the Mills ratio
+    // lambda, the probit coefficients and household influence functions, the
+    // derivative terms of the unit-value coefficients, of the cluster series,
+    // of omega and of chi with respect to the probit coefficients
+    real colvector theta, selg
+    real matrix    LAM, GAM, IFG, GG, zl1c, dome, dchi
+    real matrix    sdiag                    // M x 5: buyers, % buyers, pseudo-R2, perfectly predicted, VIF of b1
 }
 
 struct duvm_r {                         // second stage and elasticities
@@ -635,11 +725,16 @@ struct duvm_r {                         // second stage and elasticities
     // variance
     real scalar    boot, reps, reps_ok, shortcut, seed, hasV, P
     real matrix    V, bootb, G, Veta
+    // selection: coefficient of the Mills ratio, its std. err., probit coefficients
+    real scalar    hasl
+    real colvector theta, thse, selg
+    real matrix    gam, sdiag
 }
 
 // ---------------------------------------------------------------- data
 struct duvm_d scalar _duvm_load(string scalar wvars, string scalar uvvars, string scalar Xvars,
-                                string scalar lamvars, string scalar wtvar, string scalar clvar,
+                                real scalar sel, string scalar zvars, string scalar selgs,
+                                string scalar zms, string scalar wtvar, string scalar clvar,
                                 string scalar regvar, string scalar subvar, string scalar stvar,
                                 string scalar psvar, string scalar fpcvar, string scalar touse)
 {
@@ -648,9 +743,13 @@ struct duvm_d scalar _duvm_load(string scalar wvars, string scalar uvvars, strin
     d.W   = st_data(., tokens(wvars), touse)
     d.UV  = st_data(., tokens(uvvars), touse)
     d.X   = st_data(., tokens(Xvars), touse)
-    d.hasl = (lamvars != "")
-    if (d.hasl) d.LAM = st_data(., tokens(lamvars), touse)
-    else        d.LAM = J(rows(d.W), 0, .)
+    d.hasl = sel
+    if (zvars != "") d.Zx = st_data(., tokens(zvars), touse)
+    else             d.Zx = J(rows(d.W), 0, .)
+    if (sel) d.selg = strtoreal(tokens(selgs))'
+    else     d.selg = J(cols(d.W), 1, 0)
+    if (sel & cols(d.Zx)) d.zmask = rowshape(strtoreal(tokens(zms)), cols(d.W))
+    else                  d.zmask = J(cols(d.W), cols(d.Zx), 0)
     d.w   = st_data(., wtvar, touse)
     d.reg = st_data(., regvar, touse)
     d.sub = st_data(., subvar, touse)
@@ -709,17 +808,63 @@ real matrix _duvm_fe(real matrix Y, real matrix X, real colvector w, real colvec
     return(b)
 }
 
+// weighted probit of dd (0/1) on Z, by Fisher scoring (the log likelihood is
+// concave). Returns the coefficients; lam = phi/Phi at the index (the inverse
+// Mills ratio of the buyers), dlam = d lam / d index = -lam (index + lam), and
+// IF, the household influence functions of the coefficients, (w r z') I^-1
+// with I the expected information. ok = 0 when everybody or nobody buys: then
+// lam = 0 and nothing is corrected.
+real colvector _duvm_probit(real colvector dd, real matrix Z, real colvector w,
+                            real colvector lam, real colvector dlam, real matrix IF,
+                            real scalar ok)
+{
+    real colvector g, xb, P, f, r, a, step
+    real matrix Ii
+    real scalar it, n, n1
+    n = rows(dd)
+    g = J(cols(Z), 1, 0)
+    n1 = sum(dd)
+    ok = (n1 > 0 & n1 < n)
+    if (!ok) {
+        lam = J(n, 1, 0); dlam = lam; IF = J(n, cols(Z), 0)
+        return(g)
+    }
+    for (it = 1; it <= 200; it++) {
+        xb = Z * g
+        P  = rowmin((rowmax((normal(xb), J(n, 1, 1e-15))), J(n, 1, 1 - 1e-15)))
+        f  = normalden(xb)
+        r  = (dd - P) :* f :/ (P :* (1 :- P))
+        a  = (f :^ 2) :/ (P :* (1 :- P))
+        Ii = invsym(quadcross(Z, w :* a, Z))
+        step = Ii * quadcross(Z, w :* r)
+        g = g + step
+        if (max(abs(step)) < 1e-11) break
+    }
+    xb = Z * g
+    P  = rowmin((rowmax((normal(xb), J(n, 1, 1e-15))), J(n, 1, 1 - 1e-15)))
+    f  = normalden(xb)
+    r  = (dd - P) :* f :/ (P :* (1 :- P))
+    a  = (f :^ 2) :/ (P :* (1 :- P))
+    Ii = invsym(quadcross(Z, w :* a, Z))
+    lam  = exp(lnnormalden(xb) - lnnormal(xb))
+    dlam = -lam :* (xb + lam)
+    IF   = ((w :* r) :* Z) * Ii
+    return(g)
+}
+
 struct duvm_c scalar _duvm_stage1(struct duvm_d scalar d, real rowvector cf)
 {
     struct duvm_c scalar c
-    real matrix W, UV, X, LAM, info, e0, e1, e2, yp0, yp1, b, Zd, XXi
+    real matrix W, UV, X, Zx, info, e0, e1, e2, yp0, yp1, b, Zd, XXi, Zp, Xa, Xd, A, IFg, mu
     real colvector w, cid, cl, ord, mS, mU, m0, m01, sw, sw0, swsq, sw2, ee, y2, cnt, cnt0, nc
-    real scalar M, k, N, C, j, df, Cu, norm, i
+    real colvector dd, lam, dlam, ix, gj, xbp, Pp
+    real matrix IFgj, ylp, el, Cm
+    real scalar M, k, N, C, j, df, Cu, norm, i, kk, p, okp, cor, pb, ll, ll0, dfl, cul, nol
 
     // sort by cluster, stable, so that clusters are contiguous
     ord = order((d.cid, (1::rows(d.cid))), (1, 2))
     W = d.W[ord, .]; UV = d.UV[ord, .]; X = d.X[ord, .]; w = d.w[ord]; cid = d.cid[ord]
-    if (d.hasl) LAM = d.LAM[ord, .]
+    Zx = d.Zx[ord, .]
     N = rows(W); k = cols(X); M = cols(W)
     info = panelsetup(cid, 1)
     C = rows(info)
@@ -733,7 +878,9 @@ struct duvm_c scalar _duvm_stage1(struct duvm_d scalar d, real rowvector cf)
     // kept for the influence functions
     c.Xs = X; c.Ws = W; c.ws = w; c.info = info; c.cl = cl
     c.MU = J(N, M, .); c.M0 = J(N, M, .); c.E0 = J(N, M, .); c.E1 = J(N, M, .)
-    c.XX0 = J(k, k*M, .); c.XX1 = J(k, k*M, .); c.xb0c = J(C, k*M, .); c.xb1c = J(C, k*M, .)
+    kk = k + d.hasl
+    c.kk = kk; c.hasl = d.hasl
+    c.XX0 = J(k, k*M, .); c.XX1 = J(kk, kk*M, .); c.xb0c = J(C, k*M, .); c.xb1c = J(C, kk*M, .)
     c.norm0 = J(M, 1, .); c.norm1 = J(M, 1, .); c.norm01 = J(M, 1, .)
     c.df0 = J(M, 1, .); c.df1 = J(M, 1, .); c.df01 = J(M, 1, .)
     c.N0 = J(M, 1, .); c.N1 = J(M, 1, .); c.N01 = J(M, 1, .)
@@ -745,28 +892,93 @@ struct duvm_c scalar _duvm_stage1(struct duvm_d scalar d, real rowvector cf)
     mS = J(N, 1, 1)
     sw = panelsum(w, info)
     nc = info[., 2] - info[., 1] :+ 1
+    // selection: probit regressors = constant, x, the cluster means of x
+    // (Mundlak 1978; Wooldridge 1995), and the probit-only variables
+    p = 0
+    if (d.hasl) {
+        mu = panelsum(X :* w, info) :/ sw
+        Zp = (J(N, 1, 1), X, mu[cl, .], Zx)
+        p = cols(Zp)
+    }
+    c.p = p; c.selg = d.selg
+    c.theta = J(M, 1, 0); c.LAM = J(N, M, 0); c.GAM = J(p, M, .); c.IFG = J(N, p*M, 0)
+    c.GG = J(kk, p*M, 0); c.zl1c = J(C, p*M, 0); c.dome = J(M, p, 0); c.dchi = J(M, p, 0)
+    c.sdiag = J(M, 5, .)
     for (j = 1; j <= M; j++) {
-        // unit value equation on the reporters
+        // selection: probit of buying the good on all households, Mills ratio.
+        // The probit of good j uses the constant, x, its cluster means and the
+        // variables of zmask[j, .]; its coefficients and influence functions are
+        // stored in blocks of p columns, zero (or missing) where a variable does
+        // not enter. A good not corrected keeps the equation of the book.
+        cor = (d.hasl ? d.selg[j] : 0)
+        if (cor) {
+            dd = (W[., j] :> 0) :& (W[., j] :< .)
+            ix = (1::1+2*k)
+            if (cols(d.zmask)) {
+                if (any(d.zmask[j, .])) ix = ix \ (1 + 2*k) :+ selectindex(d.zmask[j, .])'
+            }
+            gj = _duvm_probit(dd, Zp[., ix], w, lam, dlam, IFgj, okp)
+            c.GAM[ix, j] = gj
+            IFg = J(N, p, 0); IFg[., ix] = IFgj
+            c.LAM[., j] = lam
+            c.IFG[., (j-1)*p+1..j*p] = IFg
+            Xa = (X, lam)
+        }
+        else Xa = X
+        // unit value equation on the reporters (+ the Mills ratio under selection)
         mU = (UV[., j] :< .)
-        b = _duvm_fe(UV[., j], X, w, mU, info, cl, e1, ee, df, Cu, norm, XXi)
-        c.beta1[., j] = b
+        b = _duvm_fe(UV[., j], Xa, w, mU, info, cl, e1, ee, df, Cu, norm, XXi)
+        if (d.hasl & !cor) {
+            // not corrected: the blocks keep kk = k + 1 columns, the last one zero
+            b = b \ 0
+            XXi = (XXi, J(k, 1, 0) \ J(1, kk, 0))
+            Xa = (X, J(N, 1, 0))
+        }
+        c.beta1[., j] = b[1..k]
         c.b1[j] = b[1]
+        if (d.hasl) c.theta[j] = b[kk]
         c.ome[j] = norm * quadcross(e1, w :* mU, e1) / df
         yp1[., j] = ee
-        c.MU[., j] = mU; c.E1[., j] = e1; c.XX1[., (j-1)*k+1..j*k] = XXi
+        c.MU[., j] = mU; c.E1[., j] = e1; c.XX1[., (j-1)*kk+1..j*kk] = XXi
         c.norm1[j] = norm; c.df1[j] = df; c.N1[j] = sum(mU)
         sw2 = panelsum(w :* mU, info)
-        c.xb1c[., (j-1)*k+1..j*k] = panelsum(X :* (w :* mU), info) :/ (sw2 :+ (sw2 :== 0))
-        // budget share equation (+ inverse Mills ratio if requested)
-        if (d.hasl) {
-            m0 = mS :* (LAM[., j] :< .)
-            b = _duvm_fe(W[., j], (X, editmissing(LAM[., j], 0)), w, m0, info, cl, e0, ee, df, Cu, norm, XXi)
-            XXi = XXi[1..k, 1..k]
+        c.xb1c[., (j-1)*kk+1..j*kk] = panelsum(Xa :* (w :* mU), info) :/ (sw2 :+ (sw2 :== 0))
+        if (cor) {
+            // diagnostics of the correction: buyers, McFadden pseudo-R2 of the
+            // probit, households predicted with probability 0 or 1 (separation),
+            // and the variance inflation of the coefficient of ln x (b1) due to
+            // lambda, 1/(1 - rho^2), rho the within-cluster partial correlation
+            // of lambda and ln x given the other regressors, on the reporters
+            xbp = Zp[., ix] * gj
+            Pp  = normal(xbp)
+            pb  = quadsum(w :* dd) / quadsum(w)
+            ll  = quadsum(w :* (dd :* lnnormal(xbp) + (1 :- dd) :* lnnormal(-xbp)))
+            ll0 = quadsum(w) * (pb * ln(pb) + (1 - pb) * ln(1 - pb))
+            c.sdiag[j, 1] = sum(dd)
+            c.sdiag[j, 2] = 100 * pb
+            c.sdiag[j, 3] = 1 - ll / ll0
+            c.sdiag[j, 4] = sum((Pp :< 1e-10) :| (Pp :> 1 - 1e-10))
+            if (k > 1) (void) _duvm_fe((lam, X[., 1]), X[., 2..k], w, mU, info, cl, el, ylp, dfl, cul, nol, IFgj)
+            else {
+                mu = panelsum((lam, X[., 1]) :* (w :* mU), info) :/ (sw2 :+ (sw2 :== 0))
+                el = ((lam, X[., 1]) - mu[cl, .]) :* mU
+            }
+            Cm = quadcross(el, w :* mU, el)
+            c.sdiag[j, 5] = 1 / (1 - Cm[1, 2]^2 / (Cm[1, 1] * Cm[2, 2]))
+            // A = theta dlambda z': how the fitted theta*lambda moves with the
+            // probit coefficients; its terms in the unit-value coefficients (GG),
+            // the cluster series (zl1c) and omega (dome)
+            A  = J(N, p, 0); A[., ix] = (c.theta[j] :* dlam) :* Zp[., ix]
+            mu = panelsum(Xa :* (w :* mU), info) :/ (sw2 :+ (sw2 :== 0))
+            Xd = (Xa - mu[cl, .]) :* mU
+            c.GG[., (j-1)*p+1..j*p]   = quadcross(Xd, w :* mU, A)
+            c.zl1c[., (j-1)*p+1..j*p] = panelsum(A :* (w :* mU), info) :/ (sw2 :+ (sw2 :== 0))
+            c.dome[j, .] = -2 * norm * quadcross(e1, w :* mU, A) / df
         }
-        else {
-            m0 = mS
-            b = _duvm_fe(W[., j], X, w, m0, info, cl, e0, ee, df, Cu, norm, XXi)
-        }
+        // budget share equation on all households: the regression of the share
+        // averaging over zero and nonzero purchases (Deaton 1997, p. 304-305)
+        m0 = mS
+        b = _duvm_fe(W[., j], X, w, m0, info, cl, e0, ee, df, Cu, norm, XXi)
         c.beta0[., j] = b[1..k]
         c.b0[j] = b[1]
         c.sig[j] = norm * quadcross(e0, w :* m0, e0) / df
@@ -787,6 +999,12 @@ struct duvm_c scalar _duvm_stage1(struct duvm_d scalar d, real rowvector cf)
             df = sum(m01) - k - sum(panelsum(w :* m01, info) :> 0)
             c.chi[j] = (sum(m01) / sum(w :* m01)) * quadcross(e1, w :* m01, e0) / df
             c.norm01[j] = sum(m01) / sum(w :* m01); c.df01[j] = df; c.N01[j] = sum(m01)
+            // selection: e1 moves with the probit coefficients by -A, centred
+            // within the cluster on the reporters
+            if (cor) {
+                mu = c.zl1c[., (j-1)*p+1..j*p]
+                c.dchi[j, .] = -c.norm01[j] * quadcross(e0, w :* m01, (A - mu[cl, .]) :* mU) / df
+            }
         }
         // cluster averages of the purged series and cluster sizes
         cnt  = panelsum(mU, info)
@@ -1092,27 +1310,36 @@ real rowvector _duvm_theta_of(struct duvm_r scalar r0, real matrix S, real matri
 }
 
 // influence functions of eta, summed within price clusters: C x q
-real matrix _duvm_if(struct duvm_c scalar c, struct duvm_r scalar r)
+real matrix _duvm_if(struct duvm_c scalar c, struct duvm_r scalar r, real matrix Cth)
 {
-    real scalar M, k, C, N, q, i, j, s, n, mi, mj, jj
-    real matrix Phi, IF, Cb0, Cb1, xt0, xt1, Xd, mu
+    real scalar M, k, kk, p, C, N, q, i, j, s, n, mi, mj, jj
+    real matrix Phi, IF, Cb0, Cb1, CG, xt0, xt1, zt1, Xa, Xd, mu, XXj
     real colvector w, ok, yi, yj, Ji, Jj, m, sw, wm
 
-    M = c.M; k = c.k; C = c.C; N = c.N
+    M = c.M; k = c.k; kk = c.kk; p = c.p; C = c.C; N = c.N
     q = 2*M*M + 5*M
     Phi = J(C, q, 0)
     w = c.ws
 
     // household-level influence functions, summed by cluster
-    Cb0 = J(C, k*M, .); Cb1 = J(C, k*M, .)
+    Cb0 = J(C, k*M, .); Cb1 = J(C, kk*M, .); CG = J(C, p*M, 0)
     for (j = 1; j <= M; j++) {
-        // beta1_j: (X~'WX~)^-1 x~_h w_h e1_h on the reporters
+        // beta1_j (and theta_j under selection): (X~'WX~)^-1 x~_h w_h e1_h on
+        // the reporters; under selection, minus the term of the estimated
+        // probit (the Mills ratio is a generated regressor)
         m = c.MU[., j]; wm = w :* m
         sw = panelsum(wm, c.info)
-        mu = panelsum(c.Xs :* wm, c.info) :/ (sw :+ (sw :== 0))
-        Xd = (c.Xs - mu[c.cl, .]) :* m
-        IF = (Xd :* (wm :* c.E1[., j])) * c.XX1[., (j-1)*k+1..j*k]
-        Cb1[., (j-1)*k+1..j*k] = panelsum(IF, c.info)
+        if (c.hasl) Xa = (c.Xs, c.LAM[., j])
+        else        Xa = c.Xs
+        mu = panelsum(Xa :* wm, c.info) :/ (sw :+ (sw :== 0))
+        Xd = (Xa - mu[c.cl, .]) :* m
+        XXj = c.XX1[., (j-1)*kk+1..j*kk]
+        IF = (Xd :* (wm :* c.E1[., j])) * XXj
+        if (c.hasl) {
+            IF = IF - c.IFG[., (j-1)*p+1..j*p] * (c.GG[., (j-1)*p+1..j*p]' * XXj)
+            CG[., (j-1)*p+1..j*p] = panelsum(c.IFG[., (j-1)*p+1..j*p], c.info)
+        }
+        Cb1[., (j-1)*kk+1..j*kk] = panelsum(IF, c.info)
         // beta0_j on the share sample
         m = c.M0[., j]; wm = w :* m
         sw = panelsum(wm, c.info)
@@ -1125,20 +1352,33 @@ real matrix _duvm_if(struct duvm_c scalar c, struct duvm_r scalar r)
         Phi[., 2*M*M + j] = panelsum(c.norm1[j] :* w :* (c.E1[., j]:^2) :* m :/ c.df1[j] - (r.ome[j] / c.N1[j]) :* m, c.info)
         m = c.MU[., j] :* c.M0[., j]
         Phi[., 2*M*M + M + j] = panelsum(c.norm01[j] :* w :* c.E0[., j] :* c.E1[., j] :* m :/ c.df01[j] - (r.chi[j] / c.N01[j]) :* m, c.info)
+        if (c.hasl) {
+            Phi[., 2*M*M + j]     = Phi[., 2*M*M + j]     + CG[., (j-1)*p+1..j*p] * c.dome[j, .]'
+            Phi[., 2*M*M + M + j] = Phi[., 2*M*M + M + j] + CG[., (j-1)*p+1..j*p] * c.dchi[j, .]'
+        }
         Phi[., 2*M*M + 4*M + j] = panelsum(w :* (c.Ws[., j] :- r.wbar[j]), c.info) / sum(w)
         Phi[., 2*M*M + 2*M + j] = Cb0[., (j-1)*k+1]
-        Phi[., 2*M*M + 3*M + j] = Cb1[., (j-1)*k+1]
+        Phi[., 2*M*M + 3*M + j] = Cb1[., (j-1)*kk+1]
     }
+    // the coefficient of the Mills ratio, for its own standard error
+    Cth = J(C, M, 0)
+    if (c.hasl) for (j = 1; j <= M; j++) Cth[., j] = Cb1[., j*kk]
 
-    // cluster-level means of x, purged like the y's (generated-regressor terms)
-    xt0 = c.xb0c; xt1 = c.xb1c
+    // cluster-level means of x (and of lambda, theta dlambda z), purged like
+    // the y's (generated-regressor terms)
+    xt0 = c.xb0c; xt1 = c.xb1c; zt1 = c.zl1c
     for (j = 1; j <= M; j++) {
         for (jj = 1; jj <= k; jj++) {
             xt0[., (j-1)*k+jj] = _duvm_purge(_duvm_setmiss(c.xb0c[., (j-1)*k+jj], r.y0t[., j] :< .), c.D)
-            xt1[., (j-1)*k+jj] = _duvm_purge(_duvm_setmiss(c.xb1c[., (j-1)*k+jj], r.y1t[., j] :< .), c.D)
+        }
+        for (jj = 1; jj <= kk; jj++) {
+            xt1[., (j-1)*kk+jj] = _duvm_purge(_duvm_setmiss(c.xb1c[., (j-1)*kk+jj], r.y1t[., j] :< .), c.D)
+        }
+        for (jj = 1; jj <= p; jj++) {
+            zt1[., (j-1)*p+jj] = _duvm_purge(_duvm_setmiss(c.zl1c[., (j-1)*p+jj], r.y1t[., j] :< .), c.D)
         }
     }
-    xt0 = editmissing(xt0, 0); xt1 = editmissing(xt1, 0)
+    xt0 = editmissing(xt0, 0); xt1 = editmissing(xt1, 0); zt1 = editmissing(zt1, 0)
 
     // second-stage moments: own term + generated-regressor terms
     for (i = 1; i <= M; i++) for (j = 1; j <= M; j++) {
@@ -1150,9 +1390,14 @@ real matrix _duvm_if(struct duvm_c scalar c, struct duvm_r scalar r)
         mi = sum(yi) / n; mj = sum(yj) / n
         yi = (yi :- mi) :* ok; yj = (yj :- mj) :* ok
         Phi[., s] = Phi[., s] + (yi :* yj - r.S[i, j] :* ok) / (n - 1)
-        Ji = -quadcross(xt1[., (i-1)*k+1..i*k] :* ok, yj) / (n - 1)
-        Jj = -quadcross(xt1[., (j-1)*k+1..j*k] :* ok, yi) / (n - 1)
-        Phi[., s] = Phi[., s] + Cb1[., (i-1)*k+1..i*k] * Ji + Cb1[., (j-1)*k+1..j*k] * Jj
+        Ji = -quadcross(xt1[., (i-1)*kk+1..i*kk] :* ok, yj) / (n - 1)
+        Jj = -quadcross(xt1[., (j-1)*kk+1..j*kk] :* ok, yi) / (n - 1)
+        Phi[., s] = Phi[., s] + Cb1[., (i-1)*kk+1..i*kk] * Ji + Cb1[., (j-1)*kk+1..j*kk] * Jj
+        if (c.hasl) {
+            Ji = -quadcross(zt1[., (i-1)*p+1..i*p] :* ok, yj) / (n - 1)
+            Jj = -quadcross(zt1[., (j-1)*p+1..j*p] :* ok, yi) / (n - 1)
+            Phi[., s] = Phi[., s] + CG[., (i-1)*p+1..i*p] * Ji + CG[., (j-1)*p+1..j*p] * Jj
+        }
         // R_ij = cov(y1_i, y0_j)
         ok = (r.y1t[., i] :< .) :& (r.y0t[., j] :< .)
         n = sum(ok)
@@ -1160,9 +1405,13 @@ real matrix _duvm_if(struct duvm_c scalar c, struct duvm_r scalar r)
         mi = sum(yi) / n; mj = sum(yj) / n
         yi = (yi :- mi) :* ok; yj = (yj :- mj) :* ok
         Phi[., M*M + s] = Phi[., M*M + s] + (yi :* yj - r.R[i, j] :* ok) / (n - 1)
-        Ji = -quadcross(xt1[., (i-1)*k+1..i*k] :* ok, yj) / (n - 1)
+        Ji = -quadcross(xt1[., (i-1)*kk+1..i*kk] :* ok, yj) / (n - 1)
         Jj = -quadcross(xt0[., (j-1)*k+1..j*k] :* ok, yi) / (n - 1)
-        Phi[., M*M + s] = Phi[., M*M + s] + Cb1[., (i-1)*k+1..i*k] * Ji + Cb0[., (j-1)*k+1..j*k] * Jj
+        Phi[., M*M + s] = Phi[., M*M + s] + Cb1[., (i-1)*kk+1..i*kk] * Ji + Cb0[., (j-1)*k+1..j*k] * Jj
+        if (c.hasl) {
+            Ji = -quadcross(zt1[., (i-1)*p+1..i*p] :* ok, yj) / (n - 1)
+            Phi[., M*M + s] = Phi[., M*M + s] + CG[., (i-1)*p+1..i*p] * Ji
+        }
     }
     return(Phi)
 }
@@ -1207,12 +1456,17 @@ real matrix _duvm_vagg(real matrix Phi, real colvector psu, real colvector strat
 
 void _duvm_analytic(struct duvm_c scalar c, struct duvm_r scalar r, real scalar svy)
 {
-    real matrix Phi
+    real matrix Phi, Cth
     real scalar P
-    Phi = _duvm_if(c, r)
+    Phi = _duvm_if(c, r, Cth)
     r.G = _duvm_jac(r)
     if (svy) r.Veta = _duvm_vagg(Phi, c.psu_c, c.strat_c, c.fpc_c, P)
     else     r.Veta = _duvm_vagg(Phi, (1::c.C), J(c.C, 1, 1), J(c.C, 1, 0), P)
+    // std. err. of the coefficient of the Mills ratio, same aggregation
+    if (c.hasl) {
+        if (svy) r.thse = sqrt(diagonal(_duvm_vagg(Cth, c.psu_c, c.strat_c, c.fpc_c, P)))
+        else     r.thse = sqrt(diagonal(_duvm_vagg(Cth, (1::c.C), J(c.C, 1, 1), J(c.C, 1, 0), P)))
+    }
     r.P = P
     r.V = r.G * r.Veta * r.G'
     r.V = (r.V + r.V') / 2
@@ -1233,6 +1487,7 @@ struct duvm_r scalar _duvm_stage2(struct duvm_c scalar c, real colvector sel,
     r.N = c.N; r.C = rows(sel); r.M = M; r.k = c.k; r.cf = cf; r.sym = sym; r.qother = qother
     r.beta0 = c.beta0; r.beta1 = c.beta1
     r.wbar = c.wbar; r.b0 = c.b0; r.b1 = c.b1; r.ome = c.ome; r.sig = c.sig; r.chi = c.chi
+    r.hasl = c.hasl; r.theta = c.theta; r.gam = c.GAM; r.thse = J(M, 1, .); r.selg = c.selg; r.sdiag = c.sdiag
     y0c = c.y0c[sel, .]; y1c = c.y1c[sel, .]; n0c = c.n0c[sel, .]; n1c = c.n1c[sel, .]; D = c.D[sel, .]
 
     // harmonic means of the cluster sizes (5.55)
@@ -1328,13 +1583,14 @@ void _duvm_boot(struct duvm_d scalar d, struct duvm_r scalar r, real scalar reps
     struct duvm_c scalar c
     struct duvm_d scalar db
     struct duvm_r scalar rb
-    real matrix pinfo, B
+    real matrix pinfo, B, TH
     real colvector porder, psu_s, pstrat, plist, draws, idx, cidb, cstrat, ok, sel
     real scalar P, t, p, K, i, n, pos
 
     if (seed >= 0) rseed(seed)
     K = cols(_duvm_bvec(r))
     B = J(reps, K, .)
+    TH = J(reps, r.M, .)
     if (shortcut) {
         // Deaton's shortcut: stage 1 once, resample the cluster-level file
         c = _duvm_stage1(d, cf)
@@ -1371,12 +1627,14 @@ void _duvm_boot(struct duvm_d scalar d, struct duvm_r scalar r, real scalar reps
                 pos = pos + n
             }
             db.W = d.W[idx, .]; db.UV = d.UV[idx, .]; db.X = d.X[idx, .]
-            db.LAM = d.LAM[idx, .]; db.hasl = d.hasl
+            // selection: the probit is estimated again in every draw
+            db.Zx = d.Zx[idx, .]; db.hasl = d.hasl; db.zmask = d.zmask; db.selg = d.selg
             db.w = d.w[idx]; db.reg = d.reg[idx]; db.sub = d.sub[idx]
             db.cid = _duvm_dense(cidb); db.N = rows(idx); db.C = max(db.cid)
             db.strat = d.strat[idx]; db.psu = d.psu[idx]; db.fpc = d.fpc[idx]
             rb = _duvm_estimate(db, cf, sym, qother)
             B[t, .] = _duvm_bvec(rb)
+            TH[t, .] = rb.theta'
             _duvm_dots(t, reps)
         }
     }
@@ -1386,6 +1644,9 @@ void _duvm_boot(struct duvm_d scalar d, struct duvm_r scalar r, real scalar reps
     if (r.reps_ok >= 2) {
         B = select(B, ok)
         r.V = quadvariance(B)
+        // selection: the coefficient of the Mills ratio (not under the
+        // shortcut, where the first stage is not resampled)
+        if (r.hasl & !shortcut) r.thse = sqrt(diagonal(quadvariance(select(TH, ok))))
     }
     else r.V = J(K, K, .)
 }
@@ -1403,7 +1664,8 @@ void _duvm_dots(real scalar t, real scalar reps)
 // vtype: 0 none, 1 linearized clustered by the price cluster, 2 linearized
 // survey design, 3 bootstrap
 void _duvm_run(string scalar Rname, string scalar wvars, string scalar uvvars,
-               string scalar Xvars, string scalar lamvars, string scalar wtvar,
+               string scalar Xvars, real scalar sel, string scalar zvars, string scalar selgs,
+               string scalar zms, string scalar wtvar,
                string scalar clvar, string scalar regvar, string scalar subvar,
                string scalar stvar, string scalar psvar, string scalar fpcvar,
                string scalar touse, string scalar cfstr, real scalar sym, real scalar qother,
@@ -1416,7 +1678,7 @@ void _duvm_run(string scalar Rname, string scalar wvars, string scalar uvvars,
     pointer(struct duvm_r scalar) scalar p
 
     cf = strtoreal(tokens(cfstr))
-    d = _duvm_load(wvars, uvvars, Xvars, lamvars, wtvar, clvar, regvar, subvar, stvar, psvar, fpcvar, touse)
+    d = _duvm_load(wvars, uvvars, Xvars, sel, zvars, selgs, zms, wtvar, clvar, regvar, subvar, stvar, psvar, fpcvar, touse)
     c = _duvm_stage1(d, cf)
     r = _duvm_stage2(c, (1::c.C), cf, sym, qother)
     if (vtype == 3) {
@@ -1466,10 +1728,12 @@ string matrix _duvm_stripes(real scalar M, string rowvector g, string rowvector 
     return(cs)
 }
 
-void _duvm_post(string scalar Rname, string scalar goods, string scalar Xnames)
+void _duvm_post(string scalar Rname, string scalar goods, string scalar Xnames,
+                string scalar Znames)
 {
     struct duvm_r scalar r
-    string rowvector g, gx, xn
+    string rowvector g, gx, xn, zn
+    real colvector th, ts
     real scalar M, K
     real colvector se
     pointer(struct duvm_r scalar) scalar p
@@ -1511,6 +1775,22 @@ void _duvm_post(string scalar Rname, string scalar goods, string scalar Xnames)
     _duvm_mat("e(Theta_x)", r.Thx,  gx, gx)
     _duvm_mat("e(beta0)", r.beta0, xn, g)
     _duvm_mat("e(beta1)", r.beta1, xn, g)
+    // selection: coefficient of the Mills ratio in the unit-value equations,
+    // its std. err., the probit coefficients (constant, x, cluster means of x,
+    // probit-only variables)
+    if (r.hasl) {
+        th = r.theta; ts = r.thse
+        if (any(!r.selg)) {
+            th[selectindex(!r.selg)] = J(sum(!r.selg), 1, .)
+            ts[selectindex(!r.selg)] = J(sum(!r.selg), 1, .)
+        }
+        _duvm_mat("e(sel_theta)", th', "theta", g)
+        // std. err.: available for every corrected good (not under the shortcut)
+        if (missing(ts) == sum(!r.selg)) _duvm_mat("e(se_sel_theta)", ts', "Std. err.", g)
+        zn = ("_cons", xn, "m_" :+ xn, tokens(Znames))
+        _duvm_mat("e(sel_gamma)", r.gam, zn, g)
+        _duvm_mat("e(sel_diag)", r.sdiag, g, ("Buyers", "Buy_pct", "Pseudo_R2", "Perfect", "VIF_b1"))
+    }
     // legacy names of the WELCOM version
     _duvm_mat("e(elprice)",  r.Exsy[1..M, 1..M], g, g)
     _duvm_mat("e(elincome)", r.el', "Elasticity", g)

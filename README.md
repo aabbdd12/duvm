@@ -24,7 +24,9 @@ variation of prices across clusters. Closed-form, written in Mata.
   that resamples the second stage only (`shortcut`);
 * `duvmdiag` / `estat diagnostics`: what will make the elasticities fragile,
   before estimating;
-* results by group (`hgroup()`), a selection correction (`csb(1)`), `estat`,
+* results by group (`hgroup()`), unit values corrected for the selection of
+  the buyers (`selection`, Heckman, with the probit in the standard errors; by
+  good with `selgoods()` and `selvars()`, and a diagnostic of its identification), `estat`,
   standard `e()` results, a dialog box (`db duvm`);
 * three Engel curves after estimation, with their confidence bands: the budget
   share, the unit value (quality) and the quantity (`predict ..., share`,

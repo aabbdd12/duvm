@@ -35,9 +35,15 @@ duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) /
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
     cluster(psu) region(rururb) indcat(sex educ) indcon(age) hgroup(decile)
 
-* 7. Selection correction for the non-buyers (inverse Mills ratio)
+* 7. Unit values corrected for the selection of the buyers (Heckman). The
+*    diagnostic first (Table D3): for other cereals, bought by 16% of the
+*    households, the Mills ratio is almost collinear with ln x and the warning
+*    advises to leave the good uncorrected; the correction is then applied to
+*    the other three goods. The coefficient of the Mills ratio is under Table 3
+duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
+    cluster(psu) region(rururb) indcat(sex educ) indcon(age) selection
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) ///
-    cluster(psu) region(rururb) indcat(sex educ) indcon(age) csb(1)
+    cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice)
 
 * 8. The formulas of the Stata code published with Deaton (1997), for the record
 *    (unweighted, as his code is), and one of its departures from the book alone

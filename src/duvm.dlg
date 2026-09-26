@@ -69,7 +69,9 @@ BEGIN
   TEXT     tx_qother   20   30  440   ., label("Quality elasticity assumed for the composite of all other goods:")
   EDIT     ed_qother  470   30   80   ., label("qother") default(0.25) numonly option(qother)
   CHECKBOX ck_nosym    20   60  600   ., label("Do not impose the (approximate) Slutsky symmetry") option(nosymmetry)
-  CHECKBOX ck_csb      20   85  600   ., label("Selection correction: inverse Mills ratio of a probit of purchase in the share equations")
+  CHECKBOX ck_sel      20   85  300   ., label("Selection correction of the unit values (Heckman)") option(selection) onclickon(opts.vl_selv.enable) onclickoff(opts.vl_selv.disable)
+  TEXT     tx_selv    330   85  110   ., label("Probit-only vars:")
+  VARLIST  vl_selv    445   85  195   ., label("selvars") option(selvars)
 
   GROUPBOX gb_nb       10  125  640  75, label("Non-buyers (households with a zero or missing budget share)")
   TEXT     tx_nb       20  147  230   ., label("Their unit values, if the data hold any:")
@@ -225,9 +227,8 @@ BEGIN
     optionarg main.vl_indcon
     optionarg /hidedefault opts.ed_qother
     option opts.ck_nosym
-    if opts.ck_csb {
-      put " csb(1)"
-    }
+    option opts.ck_sel
+    optionarg opts.vl_selv
     option opts.ck_compat
     if opts.cb_nb {
       put " nonbuyers(" opts.cb_nb ")"

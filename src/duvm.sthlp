@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0.1  24sep2026}{...}
+{* *! version 1.1.0  26sep2026}{...}
 {vieweralsosee "duvmdiag" "help duvmdiag"}{...}
 {viewerjumpto "Syntax" "duvm##syntax"}{...}
 {viewerjumpto "Description" "duvm##description"}{...}
@@ -41,7 +41,9 @@ unit value, missing or not, is ignored: see {opt nonbuyers()}).
 {synopt:{opt indcat(varlist)}}categorical household characteristics (entered as dummies){p_end}
 {synopt:{opt reg:ion(varname)}}region: its effect is removed from the cluster averages{p_end}
 {synopt:{opt sub:round(varname)}}survey round: idem{p_end}
-{synopt:{opt csb(1)}}add the inverse Mills ratio of a probit of purchase to the share equations{p_end}
+{synopt:{opt sel:ection}}correct the unit values of the buyers for selection (Heckman){p_end}
+{synopt:{opt selg:oods(namelist)}}the goods corrected; default all; implies {opt selection}{p_end}
+{synopt:{opt selv:ars(spec)}}variables of the selection probits only (exclusion restrictions), common or by good; implies {opt selection}{p_end}
 {synopt:{opt nonb:uyers(mode)}}unit values of the households that do not buy the good: {cmd:drop} (the default), {cmd:average} or {cmd:asis}{p_end}
 {synopt:{opt qoth:er(#)}}quality elasticity assumed for the composite of all other goods; default 0.25{p_end}
 {synopt:{opt nosym:metry}}do not impose the (approximate) Slutsky symmetry{p_end}
@@ -145,10 +147,52 @@ survey-round effects from the cluster-level series before the second stage
 with a non-missing value.
 
 {phang}
-{opt csb(1)} estimates, for each good, a probit of buying the good on the
-first-stage regressors and adds the inverse Mills ratio to the share equation
-of that good. Households whose Mills ratio cannot be computed leave that
-equation.
+{opt selection} corrects the unit values for the selection of the buyers.
+The budget share equation is the regression of the share on all households,
+buyers or not (Deaton 1997, p. 304-305): it is not corrected. The unit values
+are observed for the buyers only, who are not a random sample of the
+households (Deaton 1997, p. 333-334). For each good, a probit of buying the
+good is estimated on all households, on the first-stage regressors, their
+cluster means (Mundlak 1978; Wooldridge 1995) and the variables of
+{opt selvars()}; the inverse Mills ratio phi/Phi enters the unit-value
+equation of the buyers, with the cluster fixed effects, as in Heckman's (1979)
+two-step estimator. The cluster series of the second stage are the unit values
+net of the household characteristics and of the selection term. The standard
+errors include the estimation of the probit: by linearization, its influence
+functions are stacked into those of the two stages; the bootstrap estimates
+the probit again in every draw. The coefficient of the Mills ratio is
+reported under Table 3. {opt selection} requires {cmd:nonbuyers(drop)}.
+Without {opt selvars()}, the correction is identified by the nonlinearity of
+the Mills ratio only.
+
+{phang}
+{opt selgoods(namelist)} restricts the correction to some goods; the others
+keep the unit-value equation of the book, and their estimates are those
+obtained without {opt selection}. {opt selvars(spec)} gives the variables of
+the probits beyond the first-stage regressors and their cluster means. {it:spec}
+is one or more segments separated by {cmd:;}, each either {it:varlist}, which
+enters the probit of every corrected good, or {it:good}{cmd::} {it:varlist},
+which enters the probit of that good only; for instance
+{cmd:selvars(dist ; other: perc_ocupa)}. A good named in {opt selvars()} must be
+corrected.
+
+{phang}
+The correction is only as good as the identification of the Mills ratio.
+{cmd:estat diagnostics} (Table D3) reports, for each corrected good, the share
+of buyers, the pseudo-R2 of its probit, the households the probit predicts
+with probability 0 or 1, and the variance inflation factor of the quality
+elasticity due to the Mills ratio, 1/(1-rho^2), with rho the within-cluster
+correlation of the Mills ratio and log expenditure given the other regressors,
+among the reporters. Above 10, the Mills ratio is almost collinear with log
+expenditure: the quality elasticity then rests on the curvature of the probit,
+its standard error is multiplied by about the square root of the factor, and
+the linearized standard errors understate the uncertainty (in the example
+data, other cereals, bought by 16% of the households, have a factor of 156, a
+quality elasticity that changes sign under the correction, and bootstrap
+standard errors 20% to 35% larger than the linearized ones). Then leave the
+good uncorrected with {opt selgoods()}, add a variable of the probit only in
+{opt selvars()} that moves the purchase but not the unit value, or at least
+use {cmd:vce(bootstrap)}.
 
 {phang}
 {opt nonbuyers(drop|average|asis)} says what to do with the unit values of the
@@ -292,7 +336,8 @@ sum of its weights) and {cmd:mean} (its cluster averages).
 {ul:After estimation.} {cmd:estat diagnostics} reports, good by good, the
 households and clusters behind the price signal, the share of the between-
 cluster variance removed by the measurement-error correction, the sign of the
-quality elasticity and the conditioning of the moment matrix, with warnings;
+quality elasticity, the conditioning of the moment matrix and, under
+{opt selection}, the identification of the correction (Table D3), with warnings;
 {helpb duvmdiag} runs the same report before estimating. {cmd:estat elasticities}
 [{cmd:, unrestricted noquality uncompleted}] and {cmd:estat quality} redisplay
 the tables. {cmd:predict} and {cmd:estat engel} give the Engel curves; see
@@ -338,8 +383,8 @@ cluster: the fitted value of the first stage. {opt good()} names the good; with
 over the same design as the estimates (clusters, or the {cmd:svyset} design; after
 {cmd:vce(bootstrap)} the linearization on the bootstrap design); the
 covariances it uses are those of {cmd:e(V)}. It is not available after
-{cmd:vce(none)}, nor, for the share and the quantity, after {cmd:csb(1)}, whose
-share equations also hold the inverse Mills ratio.
+{cmd:vce(none)}. After {opt selection}, the variance of the unit-value slope
+holds the estimation of the probit, as in {cmd:e(V)}.
 
 {pstd}
 {ul:Units of the quantity curve.} {it:q} = {it:w x} / {it:v} is the expenditure
@@ -406,6 +451,9 @@ curves; {opt nodraw} computes them without drawing. {cmd:estat engel} stores
 {synopt:{cmd:e(vce)}}{cmd:cluster}, {cmd:svy}, {cmd:bootstrap} or {cmd:none}{p_end}
 {synopt:{cmd:e(symmetry)}}{cmd:approx} or {cmd:none}{p_end}
 {synopt:{cmd:e(compat)}}{cmd:compat} when set{p_end}
+{synopt:{cmd:e(selection)}}{cmd:heckman} under {opt selection}{p_end}
+{synopt:{cmd:e(selgoods)}}the goods corrected; {cmd:e(selvars)} the {opt selvars()} specification{p_end}
+{synopt:{cmd:e(sel_z_}{it:good}{cmd:)}}the probit-only variables of a corrected good{p_end}
 
 {p2col 5 24 28 2: Matrices}{p_end}
 {synopt:{cmd:e(b)}}every reported estimate: the five price-elasticity matrices row by row (equations {cmd:E_noqual}, {cmd:E_M}, {cmd:E_Msym}, {cmd:E_x}, {cmd:E_xsym}; names {it:quantity}{cmd:_p}{it:price}), the expenditure elasticities ({cmd:exp}), the quality elasticities ({cmd:qual}), the mean budget shares ({cmd:share}) and the quality parameters ({cmd:zeta}){p_end}
@@ -426,6 +474,9 @@ curves; {opt nodraw} computes them without drawing. {cmd:estat engel} stores
 {synopt:{cmd:e(B_ols)}}, {cmd:e(B)}, {cmd:e(B_sym)}}second-stage coefficients{p_end}
 {synopt:{cmd:e(Psi)}}, {cmd:e(Theta)}, {cmd:e(Psi_x)}, {cmd:e(Theta_x)}}quality and share responses to prices{p_end}
 {synopt:{cmd:e(G)}}, {cmd:e(V_eta)}}Jacobian and variance of the moments (linearized){p_end}
+{synopt:{cmd:e(sel_theta)}}, {cmd:e(se_sel_theta)}}coefficient of the Mills ratio in the unit-value equations, and its std. err. ({opt selection}){p_end}
+{synopt:{cmd:e(sel_gamma)}}probit coefficients by good: constant, first-stage regressors, their cluster means ({cmd:m_}), {opt selvars()} (missing where a variable does not enter){p_end}
+{synopt:{cmd:e(sel_diag)}}by good: buyers, percentage of buyers, McFadden pseudo-R2 of the probit, households predicted with probability 0 or 1, variance inflation factor of the quality elasticity due to the Mills ratio (missing for a good not corrected){p_end}
 {synopt:{cmd:e(boot_b)}}the bootstrap replications{p_end}
 {synopt:{cmd:e(elprice)}}, {cmd:e(elincome)}}the same as {cmd:e(elast_price_M)} and {cmd:e(elast_exp)}, under the names of the earlier WELCOM version{p_end}
 
@@ -446,6 +497,12 @@ curves; {opt nodraw} computes them without drawing. {cmd:estat engel} stores
 {pstd}Bootstrap of both stages, and by decile{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) vce(bootstrap, reps(500) seed(1))}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) hgroup(decile)}{p_end}
+
+{pstd}Unit values corrected for the selection of the buyers: the diagnostic
+first, which advises to leave other cereals uncorrected, then the correction of
+the other goods{p_end}
+{phang2}{cmd:. duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selection}{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice)}{p_end}
 
 {pstd}The tables with significance stars, on screen and in a Word file{p_end}
 {phang2}{cmd:. duvm, stars}{p_end}
@@ -468,8 +525,18 @@ Indonesian results. {it:Journal of Econometrics} 44: 281-309.{p_end}
 Approach to Development Policy}. Baltimore: Johns Hopkins University Press,
 chapter 5.{p_end}
 
+{phang}Heckman, J. J. 1979. Sample selection bias as a specification error.
+{it:Econometrica} 47: 153-161.{p_end}
+
+{phang}Mundlak, Y. 1978. On the pooling of time series and cross section data.
+{it:Econometrica} 46: 69-85.{p_end}
+
+{phang}Wooldridge, J. M. 1995. Selection corrections for panel data models under
+conditional mean independence assumptions. {it:Journal of Econometrics} 68:
+115-132.{p_end}
+
 
 {title:Author}
 
 {pstd}Abdelkrim Araar, Universit{c e'} Laval / PEP, aabd@ecn.ulaval.ca{p_end}
-{pstd}Version 1.0.1. License: GPL-3.0-or-later.{p_end}
+{pstd}Version 1.1.0. License: GPL-3.0-or-later.{p_end}

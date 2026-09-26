@@ -1,4 +1,4 @@
-*! duvm_estat 1.0.1  2026-09-24  Abdelkrim Araar
+*! duvm_estat 1.1.0  2026-09-26  Abdelkrim Araar
 *! estat after duvm: diagnostics, elasticities, quality, engel
 program define duvm_estat, rclass
     version 14.2
@@ -156,6 +156,54 @@ program define _duvm_estat_diag, rclass
     di _n as txt "Table D2: Between-cluster SD of the purged log unit value, the share of it removed by the"
     di as txt "          measurement-error correction, the corrected variance, and the quality parameters"
     matlist `T', border(rows) format(%10.`dec'f) twidth(9) left(2)
+
+    * ---- table 3: the selection correction (option selection) ----
+    if "`e(selection)'" != "" {
+        tempname SD
+        matrix `SD' = e(sel_diag)
+        local hasse 0
+        capture confirm matrix e(se_sel_theta)
+        if !_rc local hasse 1
+        di _n as txt "Table D3: Selection of the buyers, the probit of purchase and the Mills ratio lambda"
+        di as txt "{hline 11}{c TT}{hline 70}"
+        di as txt _col(12) "{c |}" _col(16) "Buy_pct" _col(25) "Pseudo_R2" _col(36) "Perfect" _col(48) "VIF_b1" ///
+            _col(57) "Excl" _col(64) "theta" _col(77) "z"
+        di as txt "{hline 11}{c +}{hline 70}"
+        forvalues j = 1/`M' {
+            local g : word `j' of `goods'
+            if missing(`SD'[`j', 1]) {
+                di as txt %10s abbrev("`g'", 10) _col(12) "{c |}" _col(16) "not corrected"
+                continue
+            }
+            local nex : word count `e(sel_z_`g')'
+            local th = el(e(sel_theta), 1, `j')
+            local zs "."
+            if `hasse' local zs = string(`th' / el(e(se_sel_theta), 1, `j'), "%6.2f")
+            di as txt %10s abbrev("`g'", 10) _col(12) "{c |}" as res _col(14) %8.1f `SD'[`j', 2] _col(25) %8.3f `SD'[`j', 3] ///
+                _col(34) %8.0fc `SD'[`j', 4] _col(46) %8.1f `SD'[`j', 5] _col(55) %5.0f `nex' _col(61) %9.4f `th' _col(72) %7s "`zs'"
+            if `SD'[`j', 4] > 0 {
+                local ++nwarn
+                local warn`nwarn' = "`g': " + string(`SD'[`j', 4], "%12.0fc") + " households are predicted with probability 0 or 1 by the selection probit (separation); the coefficients of the separating variables drift, the Mills ratio and theta do not"
+            }
+            if `SD'[`j', 5] > 10 {
+                local ++nwarn
+                local why = cond(`nex' == 0, "a variable of the probit only, in selvars(), could separate them", ///
+                    "the probit-only variables do not separate them")
+                local warn`nwarn' = "`g': within clusters, lambda is almost collinear with ln x (VIF of the quality elasticity " + string(`SD'[`j', 5], "%9.1f") + "): the correction multiplies its std. err. by about " + string(sqrt(`SD'[`j', 5]), "%5.1f") + " and it rests on the curvature of the probit, where the linearized std. errors understate the uncertainty; leave `g' uncorrected with selgoods(), or `why'; at least use vce(bootstrap)"
+            }
+            if `SD'[`j', 2] > 97 {
+                local ++nwarn
+                local warn`nwarn' = "`g': " + string(`SD'[`j', 2], "%4.1f") + "% of households buy; lambda is small and theta poorly identified; selgoods() can leave this good uncorrected"
+            }
+        }
+        di as txt "{hline 11}{c BT}{hline 70}"
+        di as txt "  Pseudo_R2: McFadden, of the probit of purchase; Perfect: households predicted with probability 0 or 1;"
+        di as txt "  VIF_b1: variance inflation of the quality elasticity due to lambda, 1/(1-rho^2), rho the within-cluster"
+        di as txt "  correlation of lambda and ln x given the other regressors, among the reporters (above 10: collinear);"
+        di as txt "  Excl: variables of the probit only (selvars()); theta: coefficient of lambda in the unit-value equation" ///
+            cond(`hasse', ", z its ratio to the std. err.", "")
+        return matrix sel_diag = `SD', copy
+    }
 
     * ---- the moment matrix and the symmetry restriction ----
     mata: st_numscalar("r(cond_Sf)", cond(st_matrix("e(Sf)")))
@@ -353,11 +401,7 @@ program define _duvm_estat_engel, rclass
             local L0_`j' = r(L0)
             local wb_`j' = r(wbar)
             if `ci' {
-                if "`curve'" != "quality" & r(dev_b0) > 1e-6 {
-                    di as txt "(no confidence band: the share equations hold the inverse Mills ratio of csb(1))"
-                    local ci 0
-                }
-                else matrix `V`j'' = r(V)
+                matrix `V`j'' = r(V)
             }
         }
     }

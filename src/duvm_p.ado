@@ -1,4 +1,4 @@
-*! duvm_p 1.0.1  2026-09-24  Abdelkrim Araar
+*! duvm_p 1.1.0  2026-09-26  Abdelkrim Araar
 *! predict after duvm: the three Engel curves of a good
 *!
 *!     predict [type] newvar [if] [in], {share|quality|quantity} good(name) [atmeans|asobserved] [stdp]
@@ -121,10 +121,6 @@ program define duvm_p
                 if !r(hasV) {
                     di as err "stdp: the model was estimated with vce(none)"
                     exit 322
-                }
-                if "`curve'" != "quality" & r(dev_b0) > 1e-6 {
-                    di as err "stdp of the share and quantity curves is not available after csb(1)"
-                    exit 198
                 }
                 matrix `V' = r(V)
             }
