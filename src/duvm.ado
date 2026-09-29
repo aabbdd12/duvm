@@ -271,13 +271,18 @@ program define duvm, eclass
     }
     local X `X' `indcon'
     local Xnames "`Xnames' `indcon'"
+    * the indicators of indcat(), one per level after the first, as temporary
+    * variables: tabulate, generate() would leave the data in memory marked
+    * as changed, c(changed), after the estimation
     foreach v of local indcat {
-        tempvar cd
-        qui tab `v' `if' `in', gen(`cd')
-        local nl = r(r)
+        tempvar grp
+        qui egen long `grp' = group(`v') `if' `in'
         qui levelsof `v' `if' `in', local(levs)
+        local nl : word count `levs'
         forvalues l = 2/`nl' {
-            local X `X' `cd'`l'
+            tempvar cd
+            qui gen byte `cd' = (`grp' == `l') if `grp' < .
+            local X `X' `cd'
             local val : word `l' of `levs'
             local Xnames "`Xnames' `v'==`val'"
         }
