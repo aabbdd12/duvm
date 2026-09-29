@@ -13,8 +13,8 @@ variation of prices across clusters. Closed-form, written in Mata.
   errors-in-variables correction (eq. 5.85), the quality parameter from weak
   separability (eq. 5.92), completion of the system with a composite good,
   approximate Slutsky symmetry;
-* sampling weights (`aw`, `fw`, `pw`, `iw`) with the effective cluster sizes
-  they imply;
+* sampling weights (`aw`, `pw`, `iw`; frequency weights are refused) with the
+  effective cluster sizes they imply;
 * a linearized variance from the influence functions of every first- and
   second-stage moment, including the generated-regressor terms of the first
   stage, through the analytic Jacobian of the chain, clustered by price cluster
@@ -24,6 +24,10 @@ variation of prices across clusters. Closed-form, written in Mata.
   that resamples the second stage only (`shortcut`);
 * `duvmdiag` / `estat diagnostics`: what will make the elasticities fragile,
   before estimating;
+* the elasticities of the household (the default), of the individual or of the
+  market (`elasticities()`); the household size is optional (`hhsize()`: log
+  household size in the first stage, required by the elasticities of the
+  individual);
 * results by group (`hgroup()`), unit values corrected for the selection of
   the buyers (`selection`, Heckman, with the probit in the standard errors; by
   good with `selgoods()` and `selvars()`, and a diagnostic of its identification), `estat`,

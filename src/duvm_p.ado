@@ -1,4 +1,4 @@
-*! duvm_p 1.1.0  2026-09-26  Abdelkrim Araar
+*! duvm_p 1.2.0  2026-09-29  Abdelkrim Araar
 *! predict after duvm: the three Engel curves of a good
 *!
 *!     predict [type] newvar [if] [in], {share|quality|quantity} good(name) [atmeans|asobserved] [stdp]
@@ -170,7 +170,7 @@ program define _duvm_p_obs, sortpreserve
     if "`wexp'" == "" qui gen double `wt' = 1
     else              qui gen double `wt' = `wexp'
     qui gen byte `es' = e(sample)
-    qui gen double `lnhh' = ln(`e(hhsize)')
+    if "`e(hhsize)'" != "" qui gen double `lnhh' = ln(`e(hhsize)')
     tempvar shv uvv
     local mode "`e(nonbuyers)'"
     if "`mode'" == "" local mode "asis"

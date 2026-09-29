@@ -1,5 +1,5 @@
 /*
-    duvm.dlg  —  dialog for duvm 1.1.5 (Deaton's unit-value model)
+    duvm.dlg  —  dialog for duvm 1.2.0 (Deaton's unit-value model)
     db duvm
 
     Tabs, as in Stata's estimation dialogs:
@@ -9,7 +9,7 @@
                   the goods corrected (selgoods) and the variables of the probit
                   only (selvars), for every corrected good or good by good
       if/in       standard include (ifin)
-      Weights     standard include (weights_fpai: fweight pweight aweight iweight)
+      Weights     standard include (weights), pweight aweight iweight: no fweight
       SE/Robust   linearized (cluster, svy), bootstrap (strata, psu, svy, shortcut), none
       Reporting   level, decimals, stars, seall, first stage, groups, no table,
                   tables saved to a file (saveres)
@@ -52,7 +52,7 @@ BEGIN
   TEXT     tx_goods    20   30  620   ., label("Item names (the data hold w<item>, the budget share, and luv<item>, the log unit value):")
   EDIT     ed_goods    20   50  620   ., label("Goods")
 
-  GROUPBOX gb_vars     10   90  310 120, label("Required variables")
+  GROUPBOX gb_vars     10   90  310 120, label("Variables (household size optional)")
   TEXT     tx_hhsize   20  110  140   ., label("Household size:")
   VARNAME  vn_hhsize  165  110  145   ., label("Household size") numeric option(hhsize)
   TEXT     tx_expend   20  140  140   ., label("Total expenditure:")
@@ -573,7 +573,21 @@ BEGIN
 END
 
 INCLUDE ifin
-INCLUDE weights_fpai
+// the weights tab of Stata without the frequency weights (duvm refuses them:
+// a household of the survey stands for its sampling weight)
+INCLUDE weights
+SCRIPT weights_POSTINIT_SCRIPT
+BEGIN
+  weights.rb_fw.hide
+  weights.rb_pw.show
+  weights.rb_aw.show
+  weights.rb_iw.show
+  weights.rb_pw.setposition . 50
+  weights.rb_aw.setposition . 70
+  weights.rb_iw.setposition . 90
+  weights.tx_wgt.setposition . 120
+  weights.vl_wgt.setposition . 140
+END
 
 DIALOG se, tabtitle("SE/Robust")
 BEGIN
@@ -681,8 +695,8 @@ BEGIN
            filter("Word (*.docx)|*.docx|LaTeX (*.tex)|*.tex|Excel (*.xlsx)|*.xlsx|CSV (*.csv)|*.csv|Markdown (*.md)|*.md")
 
   GROUPBOX gb_ref      10  315  640  87, label("Elasticities")
-  RADIO    rb_hh       20  335  610   ., first label("Households (the default): at the mean budget shares of the households")
-  RADIO    rb_ind      20  357  610   ., label("Individuals: each household counts for its weight times its size")
+  RADIO    rb_hh       20  335  610   ., first label("Households (the default): each household counts for its weight")
+  RADIO    rb_ind      20  357  610   ., label("Individuals: each household counts for its weight times its size (household size required)")
   RADIO    rb_mkt      20  379  610   ., last label("Market: at the aggregate budget shares, each household weighted by its expenditure")
 END
 
@@ -694,7 +708,10 @@ BEGIN
   put " " /program ifin_output
   put " " /program weights_output
   beginoptions
-    require main.vn_hhsize
+    // household size: optional, required by the individuals and by compat
+    if rpt.rb_ind | main.ck_compat {
+      require main.vn_hhsize
+    }
     optionarg main.vn_hhsize
     require main.vn_expend
     optionarg main.vn_expend

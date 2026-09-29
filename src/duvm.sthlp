@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.1.5  26sep2026}{...}
+{* *! version 1.2.0  29sep2026}{...}
 {vieweralsosee "duvmdiag" "help duvmdiag"}{...}
 {viewerjumpto "Syntax" "duvm##syntax"}{...}
 {viewerjumpto "Description" "duvm##description"}{...}
@@ -15,7 +15,7 @@
 {p2col:{cmd:duvm} {hline 2}}Deaton's unit-value model: quality-corrected price and expenditure elasticities from budget shares and unit values{p_end}
 {p2colreset}{...}
 
-{p 4 4 2}{txt}Package {cmd:duvm}, version {res}1.1.5{txt} (26/09/2026) {c |} Stata {res}14.2{txt} or later {c |} first release {res}1.0.0{txt} (24/09/2026){p_end}
+{p 4 4 2}{txt}Package {cmd:duvm}, version {res}1.2.0{txt} (29/09/2026) {c |} Stata {res}14.2{txt} or later {c |} first release {res}1.0.0{txt} (24/09/2026){p_end}
 
 
 {marker syntax}{...}
@@ -23,7 +23,7 @@
 
 {p 8 16 2}
 {cmd:duvm} {it:goods} {ifin} [{it:{help duvm##weight:weight}}]{cmd:,}
-{opt hhs:ize(varname)} {opt exp:end(varname)} {opt cl:uster(varname)}
+{opt exp:end(varname)} {opt cl:uster(varname)}
 [{it:options}]
 
 {p 8 8 2}
@@ -36,16 +36,18 @@ unit value, missing or not, is ignored: see {opt nonbuyers()}).
 {synopthdr}
 {synoptline}
 {syntab:Model}
-{p2coldent:* {opt hhs:ize(varname)}}household size{p_end}
 {p2coldent:* {opt exp:end(varname)}}total expenditure (or income) of the household{p_end}
 {p2coldent:* {opt cl:uster(varname)}}cluster (village, PSU) within which prices are constant{p_end}
+{synopt:{opt hhs:ize(varname)}}household size: its log enters the first stage; required by
+{cmd:elasticities(individuals)} and {opt compat}{p_end}
 {synopt:{opt indcon(varlist)}}continuous household characteristics{p_end}
 {synopt:{opt indcat(varlist)}}categorical household characteristics (entered as dummies){p_end}
 {synopt:{opt reg:ion(varname)}}region: its effect is removed from the cluster averages{p_end}
 {synopt:{opt sub:round(varname)}}survey round: idem{p_end}
 {synopt:{opt sel:ection}}correct the unit values of the buyers for selection (Heckman){p_end}
 {synopt:{opt selg:oods(namelist)}}the goods corrected; default all; implies {opt selection}{p_end}
-{synopt:{cmd:selvars(}[{it:good}{cmd::}] {it:varlist} [{cmd:;} ...]{cmd:)}}variables of the probits only (exclusion restrictions), for every corrected good or for one good; implies {opt selection}{p_end}
+{synopt:{cmd:selvars(}[{it:good}{cmd::}] {it:varlist} [{cmd:;} ...]{cmd:)}}variables of the probits only
+(exclusion restrictions), for every corrected good or for one good; implies {opt selection}{p_end}
 {synopt:{opt elas:ticities(type)}}{cmd:households} (the default), {cmd:individuals} or {cmd:market}{p_end}
 {synopt:{opt nonb:uyers(mode)}}unit values of the households that do not buy the good: {cmd:drop} (the default), {cmd:average} or {cmd:asis}{p_end}
 {synopt:{opt qoth:er(#)}}quality elasticity assumed for the composite of all other goods; default 0.25{p_end}
@@ -76,9 +78,13 @@ unit value, missing or not, is ignored: see {opt nonbuyers()}).
 {p 4 6 2}* required.{p_end}
 
 {marker weight}{...}
-{p 4 6 2}{opt aweight}s, {opt fweight}s, {opt pweight}s and {opt iweight}s are allowed; see {help weight}.
+{p 4 6 2}{opt aweight}s, {opt pweight}s and {opt iweight}s are allowed; see {help weight}.
 The weights enter the first-stage regressions, the mean budget shares and the cluster
-averages; the second stage treats every cluster as one observation.{p_end}
+averages; the second stage treats every cluster as one observation.
+{opt fweight}s are not allowed: a household of the survey stands for its sampling
+weight, it is not a replicated record, and the variance counts the households (a
+frequency weight built from a sampling weight, such as {cmd:int(pw*10000)}, is a
+{opt pweight}).{p_end}
 
 {marker bootopts}{...}
 {synoptset 24}{...}
@@ -108,7 +114,8 @@ composite good and imposes an approximate Slutsky symmetry.
 {pstd}
 The estimator is closed-form and runs in Mata. The first stage regresses,
 within clusters, the budget shares and the log unit values on the log of
-expenditure, the log of household size and the characteristics. The second
+expenditure, the log of household size (with {opt hhsize()}) and the
+characteristics. The second
 stage regresses the cluster averages of the purged shares on the cluster
 averages of the purged unit values, with the errors-in-variables correction of
 Deaton (1997, eq. 5.85). The quality parameter of eq. (5.92) then separates the
@@ -132,11 +139,20 @@ available with {cmd:vce(bootstrap)}.
 {dlgtab:Model}
 
 {phang}
-{opt hhsize(varname)}, {opt expend(varname)} and {opt cluster(varname)} are
-required. The logs of household size and of expenditure are the first two
-regressors of each first-stage equation; the coefficient of log expenditure in
-the unit-value equation is the quality elasticity, its coefficient in the share
-equation gives the expenditure elasticity of quantity.
+{opt expend(varname)} and {opt cluster(varname)} are required. The log of
+expenditure is the first regressor of each first-stage equation; its
+coefficient in the unit-value equation is the quality elasticity, its
+coefficient in the share equation gives the expenditure elasticity of quantity.
+
+{phang}
+{opt hhsize(varname)}, the household size, is optional. With it, the log of
+household size is the second regressor of each first-stage equation, and the
+elasticities of the individuals become available ({cmd:elasticities(individuals)}).
+Without it, the first stage has no household-size term -- the composition of
+the household can still enter through {opt indcon()} and {opt indcat()} -- and
+the elasticities are those of the households or of the market.
+{opt compat} requires it: the code published with Deaton (1997) has log household
+size in its first stage. See the rules under {opt elasticities()}.
 
 {phang}
 {opt indcon(varlist)} and {opt indcat(varlist)} add continuous variables and
@@ -249,7 +265,7 @@ evaluated at the mean budget shares of the households.
 {phang2}
 {cmd:individuals} gives those of the individual: each household counts for its
 weight times its size, {opt hhsize()}, in the regressions, the cluster averages
-and the mean budget shares. The weight used -- the weight given, that of
+and the mean budget shares; it requires {opt hhsize()}. The weight used -- the weight given, that of
 {helpb svyset} under {cmd:vce(svy)}, or 1, times {opt hhsize()} -- is stored in
 {cmd:e(wexp)}, so that {cmd:predict} and {cmd:estat} use the same.
 
@@ -267,7 +283,24 @@ evaluated (large households, often poorer, and rich households, which spend
 more, weigh differently) and, for {cmd:individuals}, through the estimates when
 behaviour varies with the size of the household. The standard errors follow:
 the shares are estimated moments whose influence functions enter the variance.
-{opt hhsize()} enters the first stage as log household size in all three.
+
+{pmore}
+The rules, {it:w} the weight ({cmd:[}{it:weight}{cmd:=]}, {opt hweight()},
+that of {helpb svyset} under {cmd:vce(svy)}, or 1), {it:n} the household size
+and {it:x} total expenditure. The default does not depend on {opt hhsize()}:
+{cmd:households}. The header of the output recalls the rule applied.
+
+{p2colset 9 40 40 2}{...}
+{p2col:{opt hhsize()}, {opt elasticities()}}first stage; weight of the statistics{p_end}
+{p2line}
+{p2col:not given, {cmd:households}}ln {it:x} and the characteristics; {it:w}{p_end}
+{p2col:not given, {cmd:individuals}}not allowed: the size of each household is needed{p_end}
+{p2col:not given, {cmd:market}}ln {it:x} and the characteristics; {it:w}; the shares weighted by {it:w} {it:x}{p_end}
+{p2col:given, {cmd:households}}ln {it:x}, ln {it:n} and the characteristics; {it:w}{p_end}
+{p2col:given, {cmd:individuals}}ln {it:x}, ln {it:n} and the characteristics; {it:w} {it:n} in every statistic{p_end}
+{p2col:given, {cmd:market}}ln {it:x}, ln {it:n} and the characteristics; {it:w}; the shares weighted by {it:w} {it:x}{p_end}
+{p2line}
+{p2colreset}{...}
 
 {phang}
 {opt nonbuyers(drop|average|asis)} says what to do with the unit values of the
@@ -395,7 +428,8 @@ two conventions: the covariance of the first-stage residuals comes from an
 auxiliary regression, and the region of a cluster is that of its first
 household. {opt compat} reproduces the code, so that results computed with it can
 be recovered: on unweighted data {cmd:duvm, compat} matches a line-by-line
-transcription of Deaton's programs to 1e-9. The code is unweighted; with weights,
+transcription of Deaton's programs to 1e-9. It requires {opt hhsize()}: the first
+stage of the code has log household size. The code is unweighted; with weights,
 {opt compat} keeps its formulas and applies the weights as the default does.
 The default follows the book. No analytic variance is available under
 {opt compat}.
@@ -526,6 +560,7 @@ curves; {opt nodraw} computes them without drawing. {cmd:estat engel} stores
 {synopt:{cmd:e(cmd)}}{cmd:duvm}{p_end}
 {synopt:{cmd:e(goods)}}the goods{p_end}
 {synopt:{cmd:e(clustvar)}}cluster variable{p_end}
+{synopt:{cmd:e(hhsize)}}household-size variable; empty without {opt hhsize()}{p_end}
 {synopt:{cmd:e(vce)}}{cmd:cluster}, {cmd:svy}, {cmd:bootstrap} or {cmd:none}{p_end}
 {synopt:{cmd:e(symmetry)}}{cmd:approx} or {cmd:none}{p_end}
 {synopt:{cmd:e(compat)}}{cmd:compat} when set{p_end}
@@ -535,13 +570,17 @@ curves; {opt nodraw} computes them without drawing. {cmd:estat engel} stores
 {synopt:{cmd:e(sel_z_}{it:good}{cmd:)}}the probit-only variables of a corrected good{p_end}
 
 {p2col 5 24 28 2: Matrices}{p_end}
-{synopt:{cmd:e(b)}}every reported estimate: the five price-elasticity matrices row by row (equations {cmd:E_noqual}, {cmd:E_M}, {cmd:E_Msym}, {cmd:E_x}, {cmd:E_xsym}; names {it:quantity}{cmd:_p}{it:price}), the expenditure elasticities ({cmd:exp}), the quality elasticities ({cmd:qual}), the mean budget shares ({cmd:share}) and the quality parameters ({cmd:zeta}){p_end}
+{synopt:{cmd:e(b)}}every reported estimate: the five price-elasticity matrices row by row (equations
+{cmd:E_noqual}, {cmd:E_M}, {cmd:E_Msym}, {cmd:E_x}, {cmd:E_xsym}; names {it:quantity}{cmd:_p}{it:price}), the
+expenditure elasticities ({cmd:exp}), the quality elasticities ({cmd:qual}), the mean budget shares
+({cmd:share}) and the quality parameters ({cmd:zeta}){p_end}
 {synopt:{cmd:e(V)}}their variance{p_end}
 {synopt:{cmd:e(elast_price)}}E, completed system, symmetry restricted (M+1 x M+1){p_end}
 {synopt:{cmd:e(elast_price_ns)}}idem, unrestricted{p_end}
 {synopt:{cmd:e(elast_price_M)}}, {cmd:e(elast_price_M_ns)}}the M x M systems{p_end}
 {synopt:{cmd:e(elast_price_noqual)}}E without the quality correction{p_end}
-{synopt:{cmd:e(se_elast_price)}}, {cmd:e(se_elast_price_ns)}, {cmd:e(se_elast_price_M)}, {cmd:e(se_elast_price_M_ns)}, {cmd:e(se_elast_price_noqual)}}standard errors of the five matrices{p_end}
+{synopt:{cmd:e(se_elast_price)}}, {cmd:e(se_elast_price_ns)}, {cmd:e(se_elast_price_M)},
+{cmd:e(se_elast_price_M_ns)}, {cmd:e(se_elast_price_noqual)}}standard errors of the five matrices{p_end}
 {synopt:{cmd:e(elast_exp)}}, {cmd:e(elast_exp_x)}, {cmd:e(se_elast_exp)}}expenditure elasticities{p_end}
 {synopt:{cmd:e(elast_qual)}}, {cmd:e(se_elast_qual)}}quality elasticities{p_end}
 {synopt:{cmd:e(se_shares_mean)}}, {cmd:e(se_zeta)}}standard errors of the mean shares and of zeta{p_end}
@@ -555,8 +594,11 @@ curves; {opt nodraw} computes them without drawing. {cmd:estat engel} stores
 {synopt:{cmd:e(Psi)}}, {cmd:e(Theta)}, {cmd:e(Psi_x)}, {cmd:e(Theta_x)}}quality and share responses to prices{p_end}
 {synopt:{cmd:e(G)}}, {cmd:e(V_eta)}}Jacobian and variance of the moments (linearized){p_end}
 {synopt:{cmd:e(sel_theta)}}, {cmd:e(se_sel_theta)}}coefficient of the Mills ratio in the unit-value equations, and its std. err. ({opt selection}){p_end}
-{synopt:{cmd:e(sel_gamma)}}probit coefficients by good: constant, first-stage regressors, their cluster means ({cmd:m_}), {opt selvars()} (missing where a variable does not enter){p_end}
-{synopt:{cmd:e(sel_diag)}}by good: buyers, percentage of buyers, McFadden pseudo-R2 of the probit, households predicted with probability 0 or 1, variance inflation factor of the quality elasticity due to the Mills ratio (missing for a good not corrected){p_end}
+{synopt:{cmd:e(sel_gamma)}}probit coefficients by good: constant, first-stage regressors, their cluster means
+({cmd:m_}), {opt selvars()} (missing where a variable does not enter){p_end}
+{synopt:{cmd:e(sel_diag)}}by good: buyers, percentage of buyers, McFadden pseudo-R2 of the probit, households
+predicted with probability 0 or 1, variance inflation factor of the quality elasticity due to the Mills ratio
+(missing for a good not corrected){p_end}
 {synopt:{cmd:e(boot_b)}}the bootstrap replications{p_end}
 {synopt:{cmd:e(elprice)}}, {cmd:e(elincome)}}the same as {cmd:e(elast_price_M)} and {cmd:e(elast_exp)}, under the names of the earlier WELCOM version{p_end}
 
@@ -598,7 +640,8 @@ Stata's temporary folder, not to the working folder. The links call
 
 {pstd}Fifty replications for the example; take several hundred in an application.{p_end}
 {phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
-{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) vce(bootstrap, reps(50) seed(1))}{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc)}
+{cmd:cluster(psu) region(rururb) indcat(sex educ) indcon(age) vce(bootstrap, reps(50) seed(1))}{p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 3":example 3: click to run in command window}){p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 3, db":click to run in dialog box}){p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 3, do":open as a do-file}){p_end}
@@ -616,18 +659,30 @@ Stata's temporary folder, not to the working folder. The links call
 {pstd}The diagnostic first, which advises to leave other cereals uncorrected (Table D3), then the correction of the other goods. The dialog box shows the second command.{p_end}
 {phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selection}{p_end}
-{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice)}{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc)}
+{cmd:cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice)}{p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 5":example 5: click to run in command window}){p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 5, db":click to run in dialog box}){p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 5, do":open as a do-file}){p_end}
 
 {title:Example 6: Variables of the probit only}
 
-{pstd}The same goods corrected. In every case the probit of a corrected good holds x -- log expenditure, log household size, {cmd:age}, the indicators of {cmd:sex} and {cmd:educ} -- and their cluster means; {cmd:selvars()} adds to it. First, {cmd:perc_ocupa} in the probit of rice only (corn and wheat: x and its means); then {cmd:perc_ocupa} in the probits of all three; then a variable of its own for two goods of the three: {cmd:perc_ocupa} for wheat, {cmd:nocup0} for rice, and nothing more for corn. The dialog box shows the third command.{p_end}
+{pstd}The same goods corrected. In every case the probit of a corrected good holds x -- log expenditure, log
+household size, {cmd:age}, the indicators of {cmd:sex} and {cmd:educ} -- and their cluster means;
+{cmd:selvars()} adds to it. First, {cmd:perc_ocupa} in the probit of rice only (corn and wheat: x and its
+means); then {cmd:perc_ocupa} in the probits of all three; then a variable of its own for two goods of the
+three: {cmd:perc_ocupa} for wheat, {cmd:nocup0} for rice, and nothing more for corn. The dialog box shows the
+third command.{p_end}
 {phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
-{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice) selvars(rice: perc_ocupa)}{p_end}
-{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice) selvars(perc_ocupa)}{p_end}
-{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice) selvars(wheat: perc_ocupa ; rice: nocup0)}{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc)}
+{cmd:cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice)}
+{cmd:selvars(rice: perc_ocupa)}{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc)}
+{cmd:cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice)}
+{cmd:selvars(perc_ocupa)}{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc)}
+{cmd:cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice)}
+{cmd:selvars(wheat: perc_ocupa ; rice: nocup0)}{p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 6":example 6: click to run in command window}){p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 6, db":click to run in dialog box}){p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 6, do":open as a do-file}){p_end}
@@ -636,7 +691,8 @@ Stata's temporary folder, not to the working folder. The links call
 
 {pstd}Run from its link, the example writes the file to Stata's temporary folder.{p_end}
 {phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
-{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) saveres(duvm_results.docx)}{p_end}
+{phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc)}
+{cmd:cluster(psu) region(rururb) indcat(sex educ) indcon(age) saveres(duvm_results.docx)}{p_end}
 {phang2}{cmd:. duvm, stars}{p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 7":example 7: click to run in command window}){p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 7, db":click to run in dialog box}){p_end}
@@ -692,7 +748,7 @@ conditional mean independence assumptions. {it:Journal of Econometrics} 68:
 {title:Author}
 
 {pstd}Abdelkrim Araar, Universit{c e'} Laval / PEP, aabd@ecn.ulaval.ca{p_end}
-{pstd}Version 1.1.5. Requires Stata 14.2 or later. License: GPL-3.0-or-later.{p_end}
+{pstd}Version 1.2.0. Requires Stata 14.2 or later. License: GPL-3.0-or-later.{p_end}
 {pstd}Technical note: Araar, A. 2026. Estimating Deaton's unit-value model: the
 {cmd:duvm} Stata module. Zenodo.
 {browse "https://doi.org/10.5281/zenodo.22938872":doi:10.5281/zenodo.22938872}.{p_end}

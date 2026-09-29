@@ -1,4 +1,4 @@
-*! master.do — reproduce every table and figure of the technical note of duvm 1.1,
+*! master.do — reproduce every table and figure of the technical note of duvm 1.2,
 *! and the numbers of its Sections 3.4 (selection of the buyers) and 3.5 (which
 *! elasticity: household, individual, market)
 *!

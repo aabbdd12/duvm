@@ -1,4 +1,4 @@
-*! _duvm_engel 1.1.0  2026-09-26  Abdelkrim Araar
+*! _duvm_engel 1.2.0  2026-09-29  Abdelkrim Araar
 *! Engel curves after duvm: the parameters of the curves of one good and their
 *! linearized covariance. Used by predict (duvm_p) and estat engel.
 *!
@@ -229,7 +229,7 @@ real colvector _duvme_probit(real colvector dd, real matrix Z, real colvector w,
                              real colvector lam, real colvector dlam, real matrix IF,
                              real scalar ok)
 {
-    real colvector g, xb, P, f, r, a, step
+    real colvector g, xb, P, f, r, a, step, aq, rq
     real matrix Ii
     real scalar it, n, n1
     n = rows(dd)
@@ -252,14 +252,13 @@ real colvector _duvme_probit(real colvector dd, real matrix Z, real colvector w,
         if (max(abs(step)) < 1e-11) break
     }
     xb = Z * g
-    P  = rowmin((rowmax((normal(xb), J(n, 1, 1e-15))), J(n, 1, 1 - 1e-15)))
-    f  = normalden(xb)
-    r  = (dd - P) :* f :/ (P :* (1 :- P))
-    a  = (f :^ 2) :/ (P :* (1 :- P))
-    Ii = invsym(quadcross(Z, w :* a, Z))
     lam  = exp(lnnormalden(xb) - lnnormal(xb))
     dlam = -lam :* (xb + lam)
-    IF   = ((w :* r) :* Z) * Ii
+    // the influence function with the OBSERVED Hessian (see _duvm_probit)
+    aq = 2 :* dd :- 1
+    rq = aq :* normalden(aq :* xb) :/ normal(aq :* xb)
+    Ii = invsym(quadcross(Z, w :* (rq :* (rq :+ xb)), Z))
+    IF = ((w :* rq) :* Z) * Ii
     return(g)
 }
 

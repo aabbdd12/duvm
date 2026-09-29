@@ -1,4 +1,4 @@
-*! duvm 1.1.5  2026-09-26  Abdelkrim Araar
+*! duvm 1.2.0  2026-09-29  Abdelkrim Araar
 *! Deaton's unit-value model: quality-corrected price and expenditure
 *! elasticities from budget shares and unit values, cluster-level prices.
 *! Model: Deaton (1988, 1990, 1997 ch. 5). Mata engine, closed-form estimator.
@@ -13,13 +13,14 @@ program define duvm, eclass
         exit
     }
     syntax anything(name=namelist id="goods") [if] [in] [aweight fweight pweight iweight] , ///
-        HHsize(varname numeric) EXPend(varname numeric) CLuster(varname) ///
-        [ REGion(varname) SUBround(varname) INDCAT(varlist) INDCON(varlist numeric) ///
+        EXPend(varname numeric) CLuster(varname) ///
+        [ HHsize(varname numeric) REGion(varname) SUBround(varname) INDCAT(varlist) INDCON(varlist numeric) ///
           HWeight(varname numeric) SELection SELGoods(namelist) SELVars(string) CSB(string) QOTHer(real 0.25) ///
           NOSYMmetry COMPAT COMPATFlags(string) VCE(string) Level(cilevel) ///
           DEC(integer 3) DREGres(integer 0) BOOT(integer 0) HGroup(varname) SEall ///
           SAVEres(string) STars NONBuyers(string) ELASticities(string) ///
           QUARD4(passthru) INISave(passthru) XFIL(passthru) GMODifier(passthru) noTABle ]
+    _duvm_nofw `weight'
 
     * ---- goods and their variables ----
     local goods `namelist'
@@ -39,6 +40,11 @@ program define duvm, eclass
     * Flags 4 and 6 are weighting conventions of the earlier WELCOM implementation
     * (Deaton's code is unweighted); they stay reachable through compatflags().
     local cf "0 0 0 0 0 0 0"
+    if "`compat'" != "" & "`hhsize'" == "" {
+        di as err "compat requires hhsize(): the first stage of the code published with Deaton (1997)"
+        di as err "has log household size among its regressors"
+        exit 198
+    }
     if "`compat'" != "" local cf "1 1 1 0 1 0 1"
     else if "`compatflags'" != "" {
         local cf ""
@@ -210,6 +216,14 @@ program define duvm, eclass
         di as err "elasticities(): households, individuals or market"
         exit 198
     }
+    * the individuals need the size of each household: with hhsize(), every
+    * statistic (regressions, cluster means, shares) weighs a household by its
+    * weight times its size; without it, the choice is households or market
+    if "`elasticities'" == "individuals" & "`hhsize'" == "" {
+        di as err "elasticities(individuals) requires hhsize(): each household then counts for its"
+        di as err "weight times its size; without hhsize(), use elasticities(households) or elasticities(market)"
+        exit 198
+    }
     local reference = cond("`elasticities'" == "individuals", "individuals", "households")
     local mkt = ("`elasticities'" == "market")
 
@@ -245,12 +259,18 @@ program define duvm, eclass
         }
     }
 
-    * ---- regressors of the first stage ----
+    * ---- regressors of the first stage: log household size only with hhsize() ----
     tempvar lnexp lhhs
     qui gen double `lnexp' = ln(`expend')
-    qui gen double `lhhs'  = ln(`hhsize')
-    local X `lnexp' `lhhs' `indcon'
-    local Xnames "lnexp lnhhsize `indcon'"
+    local X `lnexp'
+    local Xnames "lnexp"
+    if "`hhsize'" != "" {
+        qui gen double `lhhs' = ln(`hhsize')
+        local X `X' `lhhs'
+        local Xnames "`Xnames' lnhhsize"
+    }
+    local X `X' `indcon'
+    local Xnames "`Xnames' `indcon'"
     foreach v of local indcat {
         tempvar cd
         qui tab `v' `if' `in', gen(`cd')
@@ -367,7 +387,8 @@ program define duvm, eclass
         tempname G
         qui levelsof `hgroup' if `touse', local(glevs)
         local ng : word count `glevs'
-        local gopts hhsize(`hhsize') expend(`expend') cluster(`cluster') `selection' qother(`qother') `nosymmetry' nonbuyers(`nonbuyers')
+        local gopts expend(`expend') cluster(`cluster') `selection' qother(`qother') `nosymmetry' nonbuyers(`nonbuyers')
+        if "`hhsize'" != "" local gopts `gopts' hhsize(`hhsize')
         local gopts `gopts' elasticities(`elasticities')
         if `sel' local gopts `gopts' selgoods(`selgoods0')
         if `"`selvars'"' != "" local gopts `gopts' selvars(`selvars')
@@ -632,6 +653,17 @@ program define _duvm_vceparse, sclass
 end
 
 * ============================================================================
+* fweights are refused: a household of the survey stands for its sampling
+* weight, it is not a replicated record (the variance counts the households)
+program define _duvm_nofw
+    if "`0'" == "fweight" {
+        di as err "fweights are not allowed: sampling weights go in {bf:[pweight=]} (or {bf:[aweight=]});"
+        di as err "a frequency weight built from a sampling weight, such as int(pw*10000), is a pweight"
+        exit 101
+    }
+end
+
+* ============================================================================
 program define _duvm_display
     syntax [, DEC(integer 3) SEall STars]
     if `dec' < 0 local dec = e(dec)
@@ -648,7 +680,9 @@ program define _duvm_display
     di as txt "Symmetry: " as res "`sy'" as txt _col(49) "Quality elast., other goods = " as res %5.3f e(qother)
     if "`e(elasticities)'" == "individuals" di as txt "Elasticities: " as res "individuals" as txt " (each household counts for its weight x its size)"
     else if "`e(elasticities)'" == "market" di as txt "Elasticities: " as res "market" as txt " (at the aggregate budget shares: weight x total expenditure)"
-    else di as txt "Elasticities: " as res "households" as txt " (at the mean budget shares of the households)"
+    else di as txt "Elasticities: " as res "households" as txt " (each household counts for its weight)"
+    if "`e(hhsize)'" != "" di as txt "Household size: " as res "`e(hhsize)'" as txt " (its log is a regressor of the first stage)"
+    else di as txt "Household size: " as res "not specified" as txt " (no log household size in the first stage)"
     if "`e(compatflags)'" != "" di as txt "Mode: " as res "compatflags(`e(compatflags)')"
     else if "`e(compat)'" != "" di as txt "Mode: " as res "compat" as txt " (the formulas of the Stata code published with Deaton, 1997)"
     if "`e(selection)'" != "" {
@@ -908,14 +942,14 @@ real matrix _duvm_fe(real matrix Y, real matrix X, real colvector w, real colvec
 // weighted probit of dd (0/1) on Z, by Fisher scoring (the log likelihood is
 // concave). Returns the coefficients; lam = phi/Phi at the index (the inverse
 // Mills ratio of the buyers), dlam = d lam / d index = -lam (index + lam), and
-// IF, the household influence functions of the coefficients, (w r z') I^-1
-// with I the expected information. ok = 0 when everybody or nobody buys: then
+// IF, the household influence functions of the coefficients, (w r z') H^-1
+// with H the observed Hessian. ok = 0 when everybody or nobody buys: then
 // lam = 0 and nothing is corrected.
 real colvector _duvm_probit(real colvector dd, real matrix Z, real colvector w,
                             real colvector lam, real colvector dlam, real matrix IF,
                             real scalar ok)
 {
-    real colvector g, xb, P, f, r, a, step
+    real colvector g, xb, P, f, r, a, step, aq, rq
     real matrix Ii
     real scalar it, n, n1
     n = rows(dd)
@@ -940,12 +974,18 @@ real colvector _duvm_probit(real colvector dd, real matrix Z, real colvector w,
     xb = Z * g
     P  = rowmin((rowmax((normal(xb), J(n, 1, 1e-15))), J(n, 1, 1 - 1e-15)))
     f  = normalden(xb)
-    r  = (dd - P) :* f :/ (P :* (1 :- P))
-    a  = (f :^ 2) :/ (P :* (1 :- P))
-    Ii = invsym(quadcross(Z, w :* a, Z))
     lam  = exp(lnnormalden(xb) - lnnormal(xb))
     dlam = -lam :* (xb + lam)
-    IF   = ((w :* r) :* Z) * Ii
+    // The influence function uses the OBSERVED Hessian,
+    // sum w r (r + xb) z z' with r = q phi(q xb) / Phi(q xb), q = 2d - 1
+    // (the generalized residual): the derivative of the score the estimator
+    // solves.  The expected information of the scoring steps equals it only
+    // in expectation under a correct probit; on survey data the two differ at
+    // first order (easi's brute force: up to 4.6% of the standard errors).
+    aq = 2 :* dd :- 1
+    rq = aq :* normalden(aq :* xb) :/ normal(aq :* xb)
+    Ii = invsym(quadcross(Z, w :* (rq :* (rq :+ xb)), Z))
+    IF = ((w :* rq) :* Z) * Ii
     return(g)
 }
 
