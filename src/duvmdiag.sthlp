@@ -71,7 +71,7 @@ variable in {opt selvars()}, or at least {cmd:vce(bootstrap)}.
 
 {title:Example}
 
-{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. use mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)}{p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 9":example 9: click to run in command window}){p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 9, do":open as a do-file}){p_end}

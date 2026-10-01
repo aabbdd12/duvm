@@ -607,8 +607,11 @@ predicted with probability 0 or 1, variance inflation factor of the quality elas
 {title:Examples}
 
 {pstd}
-The examples use the cereal groups of the Mexican ENIGH 2014, installed with the
-package ({cmd:sysuse mexico_2014_cereals}). Each one runs from its blue links:
+The examples use the cereal groups of the Mexican ENIGH 2014,
+{cmd:mexico_2014_cereals.dta}, an ancillary file of the package:
+{stata "ssc install duvm, all replace"} (or {cmd:net get duvm}) copies it into the
+current folder; the links read it from there, else from the SSC archive, else
+from GitHub, and write nothing to disk. Each one runs from its blue links:
 in the command window, in the dialog box (filled in; click OK), or as a do-file
 opened in the Do-file Editor, to change and run it. The data in memory are not
 lost: the command window and the do-file give them back at the end, even after
@@ -619,7 +622,7 @@ Stata's temporary folder, not to the working folder. The links call
 
 {title:Example 1: Estimating the elasticities, with the diagnostics and the quality parameters}
 
-{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. use mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)}{p_end}
 {phang2}{cmd:. estat diagnostics}{p_end}
 {phang2}{cmd:. estat quality}{p_end}
@@ -629,7 +632,7 @@ Stata's temporary folder, not to the working folder. The links call
 
 {title:Example 2: With the survey design}
 
-{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. use mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. svyset psu [pweight=sweight], strata(strata) vce(linearized) singleunit(missing)}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other, hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) vce(svy)}{p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 2":example 2: click to run in command window}){p_end}
@@ -639,7 +642,7 @@ Stata's temporary folder, not to the working folder. The links call
 {title:Example 3: Bootstrap of both stages}
 
 {pstd}Fifty replications for the example; take several hundred in an application.{p_end}
-{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. use mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc)}
 {cmd:cluster(psu) region(rururb) indcat(sex educ) indcon(age) vce(bootstrap, reps(50) seed(1))}{p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 3":example 3: click to run in command window}){p_end}
@@ -648,7 +651,7 @@ Stata's temporary folder, not to the working folder. The links call
 
 {title:Example 4: Own-price elasticities by decile of per capita expenditure}
 
-{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. use mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) hgroup(decile)}{p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 4":example 4: click to run in command window}){p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 4, db":click to run in dialog box}){p_end}
@@ -657,7 +660,7 @@ Stata's temporary folder, not to the working folder. The links call
 {title:Example 5: Unit values corrected for the selection of the buyers}
 
 {pstd}The diagnostic first, which advises to leave other cereals uncorrected (Table D3), then the correction of the other goods. The dialog box shows the second command.{p_end}
-{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. use mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) selection}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc)}
 {cmd:cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice)}{p_end}
@@ -673,7 +676,7 @@ household size, {cmd:age}, the indicators of {cmd:sex} and {cmd:educ} -- and the
 means); then {cmd:perc_ocupa} in the probits of all three; then a variable of its own for two goods of the
 three: {cmd:perc_ocupa} for wheat, {cmd:nocup0} for rice, and nothing more for corn. The dialog box shows the
 third command.{p_end}
-{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. use mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc)}
 {cmd:cluster(psu) region(rururb) indcat(sex educ) indcon(age) selgoods(corn wheat rice)}
 {cmd:selvars(rice: perc_ocupa)}{p_end}
@@ -690,7 +693,7 @@ third command.{p_end}
 {title:Example 7: The tables in a Word file, then with significance stars on screen}
 
 {pstd}Run from its link, the example writes the file to Stata's temporary folder.{p_end}
-{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. use mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc)}
 {cmd:cluster(psu) region(rururb) indcat(sex educ) indcon(age) saveres(duvm_results.docx)}{p_end}
 {phang2}{cmd:. duvm, stars}{p_end}
@@ -701,7 +704,7 @@ third command.{p_end}
 {title:Example 8: Engel curves after estimation}
 
 {pstd}See {help duvm##engel:Engel curves}. The dialog box fills in the estimation.{p_end}
-{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. use mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age) notable}{p_end}
 {phang2}{cmd:. predict w_corn, share good(corn)}{p_end}
 {phang2}{cmd:. predict se_w_corn, share good(corn) stdp}{p_end}
@@ -715,7 +718,7 @@ third command.{p_end}
 {title:Example 9: The diagnostic before estimating a larger system}
 
 {pstd}See {helpb duvmdiag}.{p_end}
-{phang2}{cmd:. sysuse mexico_2014_cereals, clear}{p_end}
+{phang2}{cmd:. use mexico_2014_cereals, clear}{p_end}
 {phang2}{cmd:. duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)}{p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 9":example 9: click to run in command window}){p_end}
 {p 8 8 2}{txt}({stata "duvm_examples 9, do":open as a do-file}){p_end}

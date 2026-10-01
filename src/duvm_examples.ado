@@ -1,4 +1,4 @@
-*! duvm_examples 1.1.5  2026-09-26  Abdelkrim Araar
+*! duvm_examples 1.2.0  2026-10-01  Abdelkrim Araar
 *! The examples of help duvm and help duvmdiag, run from their links.
 *!   duvm_examples #          run example # in the command window
 *!   duvm_examples #, db      open the dialog box of duvm filled in for example #
@@ -8,6 +8,9 @@
 *! same; the dialog box, which needs the example data in memory, refuses to
 *! replace data that have unsaved changes. Files written by the examples go to
 *! Stata's temporary folder, c(tmpdir), never to the working folder.
+*! The example data are an ancillary file: read from the current folder
+*! (where "ssc install duvm, all" or "net get duvm" copies it), else from
+*! the SSC archive, else from GitHub (_duvm_exload); nothing is written.
 program define duvm_examples
     version 14.2
     syntax anything(name=ex id="example number") [, DB DO NOEDIT]
@@ -94,7 +97,11 @@ program define duvm_examples
         file write `fh' "* preserve keeps the data in memory and gives them back when this do-file ends;" _n
         file write `fh' "* delete that line to keep working on the example data." _n
         file write `fh' "preserve" _n
-        file write `fh' "sysuse mexico_2014_cereals, clear" _n
+        file write `fh' "* the example data: the current folder (where ssc install duvm, all copies" _n
+        file write `fh' "* them), else the SSC archive, else GitHub" _n
+        file write `fh' "capture use mexico_2014_cereals, clear" _n
+        file write `fh' `"if _rc capture use "http://fmwww.bc.edu/repec/bocode/m/mexico_2014_cereals.dta", clear"' _n
+        file write `fh' `"if _rc use "https://raw.githubusercontent.com/aabbdd12/duvm/main/examples/mexico_2014_cereals.dta", clear"' _n
         forvalues i = 1/`n' {
             file write `fh' `"`c`i''"' _n
         }
@@ -119,7 +126,7 @@ program define duvm_examples
             di as err "save them (or clear) first: the dialog box needs the example data in memory"
             exit 4
         }
-        qui sysuse mexico_2014_cereals, clear
+        _duvm_exload
         char _dta[duvm_example] "1"
         if `ex' == 2 qui svyset psu [pweight=sweight], strata(strata) vce(linearized) singleunit(missing)
         di as txt "(example data mexico_2014_cereals loaded for the dialog box)"
@@ -198,12 +205,42 @@ program define duvm_examples
 
     * ---- in the command window: the data in memory are kept ----
     preserve
-    qui sysuse mexico_2014_cereals, clear
+    _duvm_exload
+    local src "`r(source)'"
     di as txt _n "{hline 78}" _n "duvm, example `ex': " as res "`title'" _n as txt "{hline 78}"
-    di as txt "(example data mexico_2014_cereals; the data in memory come back at the end)"
+    di as txt "(example data mexico_2014_cereals.dta, read from `src'; the data in memory come back at the end)"
     forvalues i = 1/`n' {
         di as txt _n `". `c`i''"'
         `c`i''
     }
     if inlist(`ex', 7, 8) di as txt _n `"(files written to `T')"'
+end
+
+* ============================================================================
+* the data of the examples, an ancillary file of the package: from the
+* current folder (where "ssc install duvm, all" or "net get duvm" copies it),
+* else from the SSC archive, else from GitHub; nothing is written to disk
+program define _duvm_exload, rclass
+    capture confirm file "mexico_2014_cereals.dta"
+    if !_rc {
+        quietly use "mexico_2014_cereals.dta", clear
+        return local source "the current folder"
+        exit
+    }
+    capture quietly use "http://fmwww.bc.edu/repec/bocode/m/mexico_2014_cereals.dta", clear
+    if !_rc {
+        return local source "the SSC archive"
+        exit
+    }
+    capture quietly use "https://raw.githubusercontent.com/aabbdd12/duvm/main/examples/mexico_2014_cereals.dta", clear
+    if !_rc {
+        return local source "GitHub"
+        exit
+    }
+    di as err "duvm_examples: mexico_2014_cereals.dta is not in the current folder (`c(pwd)'),"
+    di as err "  and neither the SSC archive nor GitHub could be reached."
+    di as txt "  Copy the example data into the current folder with"
+    di as txt `"  {stata "ssc install duvm, all replace"} (from SSC), or"'
+    di as txt `"  {stata "net get duvm, from(https://raw.githubusercontent.com/aabbdd12/duvm/main)"} (from GitHub)."'
+    exit 601
 end

@@ -69,7 +69,7 @@ shipped with the package.
 Each command is on one line, so that it can be pasted into the Command window.
 
 ```stata
-sysuse mexico_2014_cereals, clear
+use mexico_2014_cereals, clear
 duvmdiag corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)
 duvm corn wheat rice other [aw=sweight], hhsize(hhsize) expend(hh_current_inc) cluster(psu) region(rururb) indcat(sex educ) indcon(age)
 estat quality
