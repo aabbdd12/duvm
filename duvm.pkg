@@ -3,7 +3,7 @@ d duvm: Deaton's unit-value model - quality-corrected price and expenditure elas
 d
 d Author: Abdelkrim Araar, Universite Laval / PEP
 d Support: aabd@ecn.ulaval.ca
-d Version : 1.2.0
+d Version : 1.2.1
 d License : GPL-3.0-or-later
 d
 d Deaton (1988, 1990, 1997 ch. 5): within-cluster first stage, between-cluster
@@ -21,7 +21,7 @@ d Option compat reproduces the code published with Deaton's book.
 d
 d Requires: Stata 14.2 or later
 d
-d Distribution-Date: 20260929
+d Distribution-Date: 20261001
 d
 f src/duvm.ado
 f src/_duvm_tabstars.ado

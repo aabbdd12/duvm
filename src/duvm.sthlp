@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.2.0  29sep2026}{...}
+{* *! version 1.2.1  01oct2026}{...}
 {vieweralsosee "duvmdiag" "help duvmdiag"}{...}
 {viewerjumpto "Syntax" "duvm##syntax"}{...}
 {viewerjumpto "Description" "duvm##description"}{...}
@@ -15,7 +15,7 @@
 {p2col:{cmd:duvm} {hline 2}}Deaton's unit-value model: quality-corrected price and expenditure elasticities from budget shares and unit values{p_end}
 {p2colreset}{...}
 
-{p 4 4 2}{txt}Package {cmd:duvm}, version {res}1.2.0{txt} (29/09/2026) {c |} Stata {res}14.2{txt} or later {c |} first release {res}1.0.0{txt} (24/09/2026){p_end}
+{p 4 4 2}{txt}Package {cmd:duvm}, version {res}1.2.1{txt} (01/10/2026) {c |} Stata {res}14.2{txt} or later {c |} first release {res}1.0.0{txt} (24/09/2026){p_end}
 
 
 {marker syntax}{...}
@@ -616,7 +616,8 @@ in the command window, in the dialog box (filled in; click OK), or as a do-file
 opened in the Do-file Editor, to change and run it. The data in memory are not
 lost: the command window and the do-file give them back at the end, even after
 an error; the dialog box, which needs the example data in memory, refuses to
-replace data that have unsaved changes. Files written by the examples go to
+replace data that have unsaved changes, unless they are example data loaded
+for a dialog box (by duvm, easi or equaids). Files written by the examples go to
 Stata's temporary folder, not to the working folder. The links call
 {cmd:duvm_examples} {it:#} [{cmd:, db} | {cmd:do}].
 
@@ -751,7 +752,7 @@ conditional mean independence assumptions. {it:Journal of Econometrics} 68:
 {title:Author}
 
 {pstd}Abdelkrim Araar, Universit{c e'} Laval / PEP, aabd@ecn.ulaval.ca{p_end}
-{pstd}Version 1.2.0. Requires Stata 14.2 or later. License: GPL-3.0-or-later.{p_end}
+{pstd}Version 1.2.1. Requires Stata 14.2 or later. License: GPL-3.0-or-later.{p_end}
 {pstd}Technical note: Araar, A. 2026. Estimating Deaton's unit-value model: the
 {cmd:duvm} Stata module. Zenodo.
 {browse "https://doi.org/10.5281/zenodo.22938872":doi:10.5281/zenodo.22938872}.{p_end}
