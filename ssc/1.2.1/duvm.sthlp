@@ -616,7 +616,8 @@ in the command window, in the dialog box (filled in; click OK), or as a do-file
 opened in the Do-file Editor, to change and run it. The data in memory are not
 lost: the command window and the do-file give them back at the end, even after
 an error; the dialog box, which needs the example data in memory, refuses to
-replace data that have unsaved changes. Files written by the examples go to
+replace data that have unsaved changes, unless they are example data loaded
+for a dialog box (by duvm, easi or equaids). Files written by the examples go to
 Stata's temporary folder, not to the working folder. The links call
 {cmd:duvm_examples} {it:#} [{cmd:, db} | {cmd:do}].
 

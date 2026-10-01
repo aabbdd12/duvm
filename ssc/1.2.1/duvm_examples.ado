@@ -117,11 +117,17 @@ program define duvm_examples
             di as err "duvm_examples: duvmdiag has no dialog box; run example 9 in the command window"
             exit 198
         }
-        * the example data loaded here carry a mark: they can be replaced by
-        * the next example without asking (svyset or an estimation on them
-        * sets c(changed)); the user's own data with changes are not replaced
-        local isex : char _dta[duvm_example]
-        if c(changed) & "`isex'" != "1" {
+        * the example data loaded for a dialog box carry a mark, here
+        * _dta[duvm_example], and _dta[easi_example] or _dta[equaids_example]
+        * from the examples of easi and equaids (easi builds prices in levels
+        * on them, which sets c(changed)): they are replaced without asking;
+        * the user's own data with changes are not
+        local isex 0
+        local cl : char _dta[]
+        foreach c of local cl {
+            if substr("`c'", -8, .) == "_example" & `"`: char _dta[`c']'"' == "1" local isex 1
+        }
+        if c(changed) & !`isex' {
             di as err "duvm_examples, db: the data in memory have changes not saved;"
             di as err "save them (or clear) first: the dialog box needs the example data in memory"
             exit 4
