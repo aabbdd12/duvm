@@ -1,0 +1,59 @@
+v 3
+d 'DUVM': module to estimate Deaton's unit-value model
+d
+d  duvm estimates the unit-value model of Deaton (1988, 1990, 1997 ch. 5):
+d  own- and cross-price elasticities of quantity, expenditure elasticities
+d  and quality elasticities for a group of goods, from the budget shares and
+d  the unit values that households report, using the spatial variation of
+d  prices across clusters. It follows the book, in closed form and in Mata: a
+d  within-cluster first stage, a between-cluster second stage with the
+d  errors-in-variables correction, the quality correction through the
+d  separability parameter, the completion of the system with a composite good
+d  and an approximate Slutsky symmetry. Standard errors are linearized from
+d  the influence functions of both stages, by cluster or by survey design
+d  (svyset), or come from a design bootstrap of both stages. duvm also
+d  corrects the unit values for the selection of the buyers (Heckman, the
+d  probit in the standard errors), reports the elasticities of the household,
+d  of the individual or of the market, and makes the household size optional.
+d  duvmdiag and estat diagnostics check the price signal; predict and estat
+d  engel give the Engel curves; tables with significance stars can be written
+d  to Word, LaTeX, Excel, CSV or Markdown; a dialog box and help examples run
+d  from clickable links are included. Option compat reproduces the Stata code
+d  published with Deaton (1997). A technical note documents the model, the
+d  estimator and the validation of the variance; it is included as an
+d  ancillary file (duvm_technical_note.pdf) and on Zenodo:
+d  https://doi.org/10.5281/zenodo.22938872
+d
+d KW: unit values
+d KW: quality
+d KW: price elasticities
+d KW: demand
+d KW: household survey
+d KW: survey design
+d KW: Deaton
+d
+d Requires: Stata version 14.2
+d
+d Distribution-Date: 20261001
+d
+d Author: Abdelkrim Araar, Universite Laval and Partnership for Economic Policy (PEP)
+d Support: email aabd@ecn.ulaval.ca
+d
+d (A copy of the package as submitted to the SSC archive, version 1.2.1, to
+d test it before SSC publishes it: the example data and the other ancillary
+d files are copied to the current folder by net get.)
+d
+f duvm.ado
+f _duvm_tabstars.ado
+f duvm.sthlp
+f duvm.dlg
+f duvm_estat.ado
+f duvm_p.ado
+f _duvm_engel.ado
+f _duvm_uv.ado
+f duvmdiag.ado
+f duvmdiag.sthlp
+f duvm_examples.ado
+f mexico_2014_cereals.dta
+f duvm_tour.do
+f duvm_technical_note.pdf
